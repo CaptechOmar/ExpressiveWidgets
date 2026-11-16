@@ -62,7 +62,15 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        run: |
+          set -o pipefail
+          gradle :app:assembleRelease --no-daemon --stacktrace 2>&1 | tee build.log
+
+      - name: Report build errors
+        if: failure()
+        run: |
+          ERR=$(grep -E '^e: |What went wrong|error:' -A4 build.log | head -50 | tr '\n' '\r' | sed 's/\r/%0A/g')
+          echo "::error title=Build errors::${ERR}"
 
       - name: Prepare APK
         run: |
