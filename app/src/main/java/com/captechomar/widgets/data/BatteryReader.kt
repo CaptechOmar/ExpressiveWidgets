@@ -1,0 +1,115 @@
+package com.captechomar.widgets.data
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.bluetooth.BluetoothClass
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.os.BatteryManager
+import android.os.Build
+
+data class PhoneBattery(val percent: Int, val charging: Boolean)
+
+/** [percent] is -1 when the device is connected but doesn't report a battery level. */
+data class BtBattery(val name: String, val address: String, val percent: Int, val isAudio: Boolean)
+
+object BatteryReader {
+
+    fun phone(context: Context): PhoneBattery {
+        val i = context.applicationContext.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val level = i?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+        val scale = i?.getIntExtra(BatteryManager.EXTRA_SCALE, 100) ?: 100
+        val status = i?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+        val charging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        val pct = if (level >= 0 && scale > 0) (level * 100f / scale).toInt() else 0
+        return PhoneBattery(pct, charging)
+    }
+
+    fun hasBluetoothPermission(context: Context): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            context.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED
+
+    /** Paired devices, used for the device picker. */
+    @SuppressLint("MissingPermission")
+    fun pairedDevices(context: Context): List<BtBattery> {
+        if (!hasBluetoothPermission(context)) return emptyList()
+        return try {
+            adapter(context)?.bondedDevices.orEmpty().map { it.toBattery(context, level = -1) }
+                .sortedWith(compareByDescending<BtBattery> { it.isAudio }.thenBy { it.name })
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /** Currently connected devices with their battery level where the system exposes one. */
+    @SuppressLint("MissingPermission")
+    fun connectedDevices(context: Context): List<BtBattery> {
+        if (!hasBluetoothPermission(context)) return emptyList()
+        return try {
+            val adapter = adapter(context) ?: return emptyList()
+            if (!adapter.isEnabled) return emptyList()
+            adapter.bondedDevices.orEmpty()
+                .filter { isConnected(it) }
+                .map { it.toBattery(context, level = readLevel(context, it)) }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    /** Picks the earphones to show: the chosen device if connected, otherwise the best connected audio device. */
+    fun earphones(context: Context, preferredAddress: String?): BtBattery? {
+        val connected = connectedDevices(context)
+        if (preferredAddress != null) return connected.firstOrNull { it.address == preferredAddress }
+        return connected.firstOrNull { it.isAudio && it.percent >= 0 }
+            ?: connected.firstOrNull { it.isAudio }
+            ?: connected.firstOrNull { it.percent >= 0 }
+    }
+
+    // ---- cache of levels pushed to us by the system's battery-level broadcast ----
+
+    private fun cache(context: Context) =
+        context.applicationContext.getSharedPreferences("bt_levels", Context.MODE_PRIVATE)
+
+    fun cacheLevel(context: Context, address: String, level: Int) {
+        if (level in 0..100) cache(context).edit().putInt(address, level).apply()
+    }
+
+    fun clearCachedLevel(context: Context, address: String) {
+        cache(context).edit().remove(address).apply()
+    }
+
+    private fun adapter(context: Context) =
+        context.applicationContext.getSystemService(BluetoothManager::class.java)?.adapter
+
+    private fun isConnected(device: BluetoothDevice): Boolean = try {
+        BluetoothDevice::class.java.getMethod("isConnected").invoke(device) as? Boolean ?: false
+    } catch (_: Throwable) {
+        false
+    }
+
+    // BluetoothDevice#getBatteryLevel is hidden API; fall back to the cached broadcast value.
+    private fun readLevel(context: Context, device: BluetoothDevice): Int {
+        val reflected = try {
+            BluetoothDevice::class.java.getMethod("getBatteryLevel").invoke(device) as? Int ?: -1
+        } catch (_: Throwable) {
+            -1
+        }
+        if (reflected in 0..100) return reflected
+        return cache(context).getInt(device.address, -1)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun BluetoothDevice.toBattery(context: Context, level: Int): BtBattery {
+        val audio = try {
+            bluetoothClass?.majorDeviceClass == BluetoothClass.Device.Major.AUDIO_VIDEO
+        } catch (_: Throwable) {
+            false
+        }
+        val label = try { name } catch (_: Throwable) { null }
+        return BtBattery(label ?: address, address, level, audio)
+    }
+}

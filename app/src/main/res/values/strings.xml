@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Expressive Widgets</string>
+    <string name="widget_batteries_name">Batteries</string>
+    <string name="widget_batteries_desc">Phone and Bluetooth earphones battery</string>
+</resources>
