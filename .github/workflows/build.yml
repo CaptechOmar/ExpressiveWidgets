@@ -69,7 +69,7 @@ jobs:
       - name: Report build errors
         if: failure()
         run: |
-          ERR=$(grep -E '^e: |What went wrong|error:' -A4 build.log | head -50 | tr '\n' '\r' | sed 's/\r/%0A/g')
+          ERR=$(grep -E '^e: |What went wrong|error:' -A14 build.log | head -90 | tr '\n' '\r' | sed 's/\r/%0A/g')
           echo "::error title=Build errors::${ERR}"
 
       - name: Prepare APK
