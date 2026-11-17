@@ -3,6 +3,9 @@ package com.captechomar.widgets.widgets
 import android.graphics.Bitmap
 import android.graphics.Color
 import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.cbrt
 import kotlin.math.min
 import kotlin.math.pow
@@ -20,7 +23,8 @@ import kotlin.math.sqrt
  */
 object ArtColors {
     private const val BUCKETS = 12
-    private const val SIZE = 48
+    private const val SIZE = 96
+    private const val FINE = 36
 
     private enum class Mode { LIGHT, VIVID, DARK_BG, MUTED }
 
@@ -32,6 +36,11 @@ object ArtColors {
         val hueSum = FloatArray(BUCKETS)
         val satSum = FloatArray(BUCKETS)
         val valSum = FloatArray(BUCKETS)
+        val fCount = IntArray(FINE)
+        val fSat = FloatArray(FINE)
+        val fVal = FloatArray(FINE)
+        val fSin = FloatArray(FINE)
+        val fCos = FloatArray(FINE)
         var darkCount = 0
         var dR = 0L
         var dG = 0L
@@ -56,6 +65,15 @@ object ArtColors {
                     satSum[b] += s
                     valSum[b] += v
                 }
+                if (s >= 0.2f && v >= 0.25f) {
+                    val f = (hsv[0] / (360f / FINE)).toInt().coerceIn(0, FINE - 1)
+                    val rad = Math.toRadians(hsv[0].toDouble())
+                    fCount[f]++
+                    fSat[f] += s
+                    fVal[f] += v
+                    fSin[f] += sin(rad).toFloat()
+                    fCos[f] += cos(rad).toFloat()
+                }
                 // greys, whites and skin-like low-saturation areas are ignored on purpose
             }
         }
@@ -72,10 +90,15 @@ object ArtColors {
             (count[main] + count[(main + 1) % BUCKETS] + count[(main + BUCKETS - 1) % BUCKETS]).toFloat() / colored
         } else 0f
 
+        // share of the colored area that is a clearly different hue from the dominant one
+        var otherCount = 0
+        for (i in 0 until BUCKETS) if (hueDistance(i * 30f + 15f, hueP) >= 70f) otherCount += count[i]
+        val other = if (colored > 0) otherCount.toFloat() / colored else 0f
+
         val mode = when {
             main < 0 || (darkCount >= total * 0.12f && darkCount >= mainCount * 0.9f) -> Mode.DARK_BG
             valP >= 0.72f && satP <= 0.62f && mainCount >= total * 0.10f -> Mode.LIGHT
-            satP >= 0.55f && share >= 0.55f && mainCount >= total * 0.10f -> Mode.VIVID
+            satP >= 0.55f && share >= 0.55f && other < 0.09f && mainCount >= total * 0.10f -> Mode.VIVID
             else -> Mode.MUTED
         }
 
@@ -84,8 +107,8 @@ object ArtColors {
 
         // ---- light, earthy covers: use the color as it is, with dark buttons ----
         if (mode == Mode.LIGHT) {
-            val s = (satP * 1.1f).coerceIn(0.3f, 0.65f)
-            val bg = hsvColor(hueP, s, valP.coerceIn(0.82f, 0.92f))
+            val s = (satP * 1.15f).coerceIn(0.3f, 0.68f)
+            val bg = hsvColor(hueP, s, (valP + 0.04f).coerceIn(0.84f, 0.94f))
             return WidgetColors(
                 container = bg,
                 track = hsvColor(hueP, s, 0.72f),
@@ -98,7 +121,7 @@ object ArtColors {
         if (mode == Mode.VIVID) {
             // orange covers lean slightly toward red, which reads richer
             val hue = if (hueP < 45f) hueP * 0.7f else hueP
-            val bgS = satP.coerceIn(0.65f, 0.97f)
+            val bgS = (satP + 0.12f).coerceIn(0.72f, 0.97f)
             // equal perceived lightness for every hue, so cyan and red look equally deep
             val bgV = valueForLightness(hue, bgS, 36f).coerceIn(0.4f, 0.8f)
             return if (dark) WidgetColors(
@@ -128,28 +151,41 @@ object ArtColors {
         } else {
             bgHue = hueP
             bgSat = satP.coerceIn(0.35f, 0.85f)
-            bgVal = 0.25f
+            bgVal = if (hueP in 150f..270f) 0.30f else 0.25f
         }
 
-        var accent = -1
+        // accent: best vivid hue window (30 degrees wide) that differs from the background hue
+        var accHue = bgHue
+        var accSat = 0.15f
+        var accVal = 0.9f
         var bestScore = 0f
-        for (i in 0 until BUCKETS) {
-            val n = count[i]
-            if (n < total * 0.006f) continue
-            val sat = satSum[i] / n
-            // small areas only count when they are clearly vivid (e.g. a red title on a pale cover)
-            if (n < total * 0.015f && sat < 0.5f) continue
-            val hue = hueSum[i] / n
-            if (mode == Mode.MUTED && hueDistance(hue, bgHue) < 35f) continue
-            val score = sat * (valSum[i] / n) * sqrt(n.toFloat())
+        for (i in 0 until FINE) {
+            val a = (i + FINE - 1) % FINE
+            val b = (i + 1) % FINE
+            val n = fCount[a] + fCount[i] + fCount[b]
+            if (n < total * 0.0025f) continue
+            val sat = (fSat[a] + fSat[i] + fSat[b]) / n
+            val vv = (fVal[a] + fVal[i] + fVal[b]) / n
+            val hue = ((Math.toDegrees(
+                atan2((fSin[a] + fSin[i] + fSin[b]).toDouble(), (fCos[a] + fCos[i] + fCos[b]).toDouble()),
+            ).toFloat()) + 360f) % 360f
+            val dist = hueDistance(hue, bgHue)
+            if (dist < 45f) continue
+            // small areas only count when clearly vivid, or when they are far from the background hue
+            if (n < total * 0.015f && sat < 0.5f && !(dist >= 90f && n >= total * 0.007f)) continue
+            val score = sat * sat * vv * sqrt(n.toFloat())
             if (score > bestScore) {
                 bestScore = score
-                accent = i
+                accHue = hue
+                accSat = (sat * 1.5f + 0.2f).coerceIn(0.55f, 0.95f)
+                accVal = vv.coerceIn(0.78f, 0.93f)
             }
         }
-        val accHue = if (accent >= 0) hueSum[accent] / count[accent] else bgHue
-        val accSat = if (accent >= 0) (satSum[accent] / count[accent]).coerceIn(0.35f, 0.95f) else 0.15f
-        val accVal = if (accent >= 0) (valSum[accent] / count[accent]).coerceIn(0.75f, 0.93f) else 0.9f
+        if (bestScore == 0f) {
+            accSat = 0.15f
+            accVal = 0.9f
+            accHue = bgHue
+        }
 
         return if (dark) WidgetColors(
             container = hsvColor(bgHue, bgSat, bgVal),
