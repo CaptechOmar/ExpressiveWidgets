@@ -8,6 +8,8 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.service.notification.NotificationListenerService
 import com.captechomar.widgets.widgets.MusicKind
 import com.captechomar.widgets.widgets.WidgetUpdater
@@ -20,7 +22,10 @@ class MediaListenerService : NotificationListenerService() {
 
     private var manager: MediaSessionManager? = null
     private var tracked: List<MediaController> = emptyList()
-    private var lastKey = ""
+    private var currentKey = ""
+    private var artKey = ""
+    private var clearTimerKey = ""
+    private val handler = Handler(Looper.getMainLooper())
 
     private val callback = object : MediaController.Callback() {
         override fun onMetadataChanged(metadata: MediaMetadata?) = refresh()
@@ -84,10 +89,24 @@ class MediaListenerService : NotificationListenerService() {
         val pkg = controller.packageName
 
         val key = "$pkg|$title|$artist"
-        if (key != lastKey || !MusicStore.hasArt(this)) {
+        currentKey = key
+        // Keep showing the previous cover (and its colors) while the new one loads, so the widget
+        // doesn't flash back to the default palette. Only drop it if no art shows up within a moment.
+        if (artKey != key) {
             val art = loadArt(md)
-            if (art != null || key != lastKey) MusicStore.saveArt(this, art)
-            lastKey = key
+            if (art != null) {
+                MusicStore.saveArt(this, art)
+                artKey = key
+            } else if (clearTimerKey != key) {
+                clearTimerKey = key
+                handler.postDelayed({
+                    if (currentKey == key && artKey != key) {
+                        MusicStore.saveArt(this, null)
+                        artKey = key
+                        WidgetUpdater.updateKind(this, MusicKind)
+                    }
+                }, 3000)
+            }
         }
         MusicStore.save(this, title, artist, pkg, isPlaying(controller))
         WidgetUpdater.updateKind(this, MusicKind)

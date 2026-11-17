@@ -61,9 +61,9 @@ object ArtColors {
         val acSat = if (accSat < 0.15f) accSat else accSat.coerceIn(0.55f, 1f)
 
         return if (dark) WidgetColors(
-            container = hsvColor(mainHue, bgSat, 0.30f),
-            track = hsvColor(mainHue, bgSat, 0.18f),
-            fill = hsvColor(mainHue, bgSat, 0.27f),
+            container = hsvColor(mainHue, bgSat, 0.50f),
+            track = hsvColor(mainHue, bgSat, 0.32f),
+            fill = hsvColor(mainHue, bgSat, 0.50f),
             content = hsvColor(accHue, acSat, if (acSat < 0.15f) 0.9f else 0.93f),
         ) else WidgetColors(
             container = hsvColor(mainHue, min(bgSat, 0.25f), 0.95f),
