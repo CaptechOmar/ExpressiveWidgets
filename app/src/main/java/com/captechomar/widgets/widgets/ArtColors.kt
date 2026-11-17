@@ -118,6 +118,16 @@ object ArtColors {
         }
 
         // ---- one vivid hue dominates: rich background, pale tinted buttons ----
+        // golden / mustard covers: a dark warm background with the gold as the accent reads better than brown
+        if (mode == Mode.VIVID && dark && hueP in 25f..70f) {
+            return WidgetColors(
+                container = hsvColor(hueP * 0.4f, 0.95f, 0.28f),
+                track = hsvColor(hueP * 0.4f, 0.95f, 0.18f),
+                fill = hsvColor(hueP * 0.4f, 0.95f, 0.28f),
+                content = hsvColor(hueP, 0.55f, 0.85f),
+            )
+        }
+
         if (mode == Mode.VIVID) {
             // orange covers lean slightly toward red, which reads richer
             val hue = if (hueP < 45f) hueP * 0.7f else hueP
@@ -149,7 +159,8 @@ object ArtColors {
             bgSat = hsv[1].coerceIn(0.15f, 0.8f)
             bgVal = (hsv[2] + 0.04f).coerceIn(0.12f, 0.22f)
         } else {
-            bgHue = hueP
+            // pale or greyish blue covers read better as a navy than as a slate
+            bgHue = if (hueP in 180f..235f && satP < 0.5f) hueP + (235f - hueP) * 0.6f else hueP
             bgSat = satP.coerceIn(0.35f, 0.85f)
             bgVal = if (hueP in 150f..270f) 0.30f else 0.25f
         }
@@ -159,6 +170,12 @@ object ArtColors {
         var accSat = 0.15f
         var accVal = 0.9f
         var bestScore = 0f
+        var bestShare = 0f
+        // warm yellow / khaki areas are preferred unless a big red or orange area competes with them
+        var warmHue = -1f
+        var warmSat = 0f
+        var warmVal = 0f
+        var warmN = 0f
         for (i in 0 until FINE) {
             val a = (i + FINE - 1) % FINE
             val b = (i + 1) % FINE
@@ -173,18 +190,41 @@ object ArtColors {
             if (dist < 45f) continue
             // small areas only count when clearly vivid, or when they are far from the background hue
             if (n < total * 0.015f && sat < 0.5f && !(dist >= 90f && n >= total * 0.007f)) continue
+            if (hue in 38f..75f && vv >= 0.65f && n >= total * 0.012f && n > warmN) {
+                warmN = n.toFloat()
+                warmHue = hue
+                warmSat = sat
+                warmVal = vv
+            }
             val score = sat * sat * vv * sqrt(n.toFloat())
             if (score > bestScore) {
                 bestScore = score
+                bestShare = n.toFloat() / total
                 accHue = hue
-                accSat = (sat * 1.5f + 0.2f).coerceIn(0.55f, 0.95f)
+                accSat = (sat * 1.2f + 0.1f).coerceIn(0.45f, 0.85f)
                 accVal = vv.coerceIn(0.78f, 0.93f)
             }
+        }
+        if (warmHue >= 0f && bestShare < 0.08f) {
+            bestScore = 1f
+            accHue = warmHue
+            accSat = (warmSat * 1.2f + 0.1f).coerceIn(0.45f, 0.85f)
+            accVal = warmVal.coerceIn(0.78f, 0.93f)
         }
         if (bestScore == 0f) {
             accSat = 0.15f
             accVal = 0.9f
             accHue = bgHue
+        }
+
+        if (dark && mode == Mode.MUTED && satP >= 0.8f && mainCount >= total * 0.25f && bestScore > 0f) {
+            val rich = valueForLightness(bgHue, 0.93f, 27f).coerceIn(0.4f, 0.7f)
+            return WidgetColors(
+                container = hsvColor(bgHue, 0.93f, rich),
+                track = hsvColor(bgHue, 0.93f, rich * 0.6f),
+                fill = hsvColor(bgHue, 0.93f, rich),
+                content = hsvColor(accHue, 0.3f, 0.6f),
+            )
         }
 
         return if (dark) WidgetColors(
