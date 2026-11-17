@@ -31,19 +31,22 @@ object WidgetUpdater {
 
     private fun update(context: Context, awm: AppWidgetManager, kind: WidgetKind, widgetId: Int) {
         try {
-            val (w, h) = sizePx(context, awm, widgetId)
-            val bitmap = kind.render(context, WidgetPrefs.load(context, widgetId, kind.defaultConfig), w, h)
+            val size = sizeOf(context, awm, widgetId)
+            val cfg = WidgetPrefs.load(context, widgetId, kind.defaultConfig)
+            val bitmap = kind.render(context, cfg, size.wPx, size.hPx)
             val views = RemoteViews(context.packageName, kind.layoutRes)
             views.setImageViewBitmap(R.id.widget_image, bitmap)
-            kind.bindClicks(context, views, widgetId)
+            kind.bindClicks(context, views, widgetId, cfg, size.wDp, size.hDp)
             awm.updateAppWidget(widgetId, views)
         } catch (_: Throwable) {
             // never let one widget crash the receiver
         }
     }
 
-    /** Widget size in pixels, scaled down so the bitmap stays well under RemoteViews' memory limit. */
-    private fun sizePx(context: Context, awm: AppWidgetManager, widgetId: Int): Pair<Int, Int> {
+    private class Size(val wPx: Int, val hPx: Int, val wDp: Float, val hDp: Float)
+
+    /** Widget size, with the bitmap size scaled down so it stays well under RemoteViews' memory limit. */
+    private fun sizeOf(context: Context, awm: AppWidgetManager, widgetId: Int): Size {
         val o = awm.getAppWidgetOptions(widgetId)
         val landscape = context.resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         val wDp = if (landscape) o.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, 250)
@@ -56,6 +59,6 @@ object WidgetUpdater {
         val scale = min(1f, 900f / w)
         w *= scale
         h *= scale
-        return w.toInt() to h.toInt()
+        return Size(w.toInt(), h.toInt(), wDp.toFloat(), hDp.toFloat())
     }
 }

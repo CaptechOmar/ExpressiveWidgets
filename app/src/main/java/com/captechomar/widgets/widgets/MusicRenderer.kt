@@ -19,13 +19,12 @@ import kotlin.math.min
 
 /**
  * Draws the music widget: a play/pause circle, previous, next and the album art.
- * The tap targets in widget_music.xml use the weights 22/16/16/46, matching [CELLS].
+ * Tap targets in widget_music.xml cover x = 0-20% (play), 20-36% (previous), 36-52% (next), 52-100% (art).
  */
 object MusicRenderer {
-    private val CELLS = floatArrayOf(0.22f, 0.16f, 0.16f, 0.46f)
 
     /** Width-to-height ratio the compact widget keeps, regardless of how tall the launcher cell is. */
-    private const val HEIGHT_RATIO = 0.235f
+    const val HEIGHT_RATIO = 0.235f
 
     fun render(
         context: Context,
@@ -54,22 +53,21 @@ object MusicRenderer {
         canvas.drawRoundRect(RectF(0f, top, wf, top + ch), outerR, outerR, paint)
 
         // play / pause circle
-        val cell1 = wf * CELLS[0]
-        val d = min(ch * 0.63f, cell1 * 0.92f)
-        val cx = cell1 / 2f
+        val cx = wf * 0.1075f
+        val d = min(ch * 0.63f, wf * 0.20f * 0.92f)
         paint.color = col.content
         canvas.drawCircle(cx, cy, d / 2f, paint)
-        val iconSize = d * 0.52f
+        val iconSize = d * 0.43f
         val playing = state?.playing == true
         drawIcon(context, canvas, if (playing) R.drawable.ic_pause else R.drawable.ic_play, cx, cy, iconSize, col.fill, 255)
 
         // previous / next share the play icon's size and style
-        drawIcon(context, canvas, R.drawable.ic_skip_previous, wf * (CELLS[0] + CELLS[1] / 2f), cy, iconSize, col.content, 235)
-        drawIcon(context, canvas, R.drawable.ic_skip_next, wf * (CELLS[0] + CELLS[1] + CELLS[2] / 2f), cy, iconSize, col.content, 235)
+        drawIcon(context, canvas, R.drawable.ic_skip_previous, wf * 0.281f, cy, iconSize, col.content, 235)
+        drawIcon(context, canvas, R.drawable.ic_skip_next, wf * 0.437f, cy, iconSize, col.content, 235)
 
         // album art
-        val artLeft = wf * (CELLS[0] + CELLS[1] + CELLS[2])
-        val artRect = RectF(artLeft, top + ch * 0.10f, wf - ch * 0.14f, top + ch * 0.90f)
+        val artLeft = wf * 0.541f
+        val artRect = RectF(artLeft, top + ch * 0.10f, wf - ch * 0.11f, top + ch * 0.90f)
         val ak = 0.2f + 0.8f * cfg.artRoundness.coerceIn(0f, 1f)
         val artR = min(artRect.height() / 2f, artRect.height() * 0.5f * ak)
         if (art != null) {
