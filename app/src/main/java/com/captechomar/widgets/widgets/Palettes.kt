@@ -18,7 +18,7 @@ object Palettes {
         PaletteOption("mono", "Mono"),
     )
 
-    private fun isDark(context: Context) =
+    fun isDark(context: Context) =
         (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
 
     fun resolve(context: Context, id: String): WidgetColors {

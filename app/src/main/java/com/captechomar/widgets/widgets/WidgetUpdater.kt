@@ -32,7 +32,7 @@ object WidgetUpdater {
     private fun update(context: Context, awm: AppWidgetManager, kind: WidgetKind, widgetId: Int) {
         try {
             val (w, h) = sizePx(context, awm, widgetId)
-            val bitmap = kind.render(context, WidgetPrefs.load(context, widgetId), w, h)
+            val bitmap = kind.render(context, WidgetPrefs.load(context, widgetId, kind.defaultConfig), w, h)
             val views = RemoteViews(context.packageName, kind.layoutRes)
             views.setImageViewBitmap(R.id.widget_image, bitmap)
             kind.bindClicks(context, views, widgetId)

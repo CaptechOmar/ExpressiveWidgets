@@ -27,6 +27,8 @@ interface WidgetKind {
     val layoutRes: Int
     val usesEarphones: Boolean get() = false
     val needsNotificationAccess: Boolean get() = false
+    val supportsArt: Boolean get() = false
+    val defaultConfig: WidgetConfig get() = WidgetConfig()
 
     fun render(context: Context, cfg: WidgetConfig, widthPx: Int, heightPx: Int): Bitmap
     fun bindClicks(context: Context, views: RemoteViews, widgetId: Int)
@@ -59,6 +61,8 @@ object MusicKind : WidgetKind {
     override val description = "Album art with play, previous and next controls for whatever is playing."
     override val layoutRes = R.layout.widget_music
     override val needsNotificationAccess = true
+    override val supportsArt = true
+    override val defaultConfig = WidgetConfig(roundness = 0.6f, artRoundness = 1f, artColors = true, heightScale = 1f)
 
     override fun render(context: Context, cfg: WidgetConfig, widthPx: Int, heightPx: Int): Bitmap =
         MusicRenderer.render(context, cfg, widthPx, heightPx)

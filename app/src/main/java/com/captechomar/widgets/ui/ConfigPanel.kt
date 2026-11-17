@@ -24,6 +24,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,7 +48,7 @@ import com.captechomar.widgets.widgets.Palettes
 @Composable
 fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () -> Unit) {
     val context = LocalContext.current
-    var cfg by remember { mutableStateOf(WidgetPrefs.load(context, widgetId)) }
+    var cfg by remember { mutableStateOf(WidgetPrefs.load(context, widgetId, kind.defaultConfig)) }
     var hasPermission by remember { mutableStateOf(BatteryReader.hasBluetoothPermission(context)) }
     var devices by remember { mutableStateOf(BatteryReader.pairedDevices(context)) }
 
@@ -82,8 +83,31 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
             }
         }
 
-        Text("Roundness", style = MaterialTheme.typography.titleMedium)
+        if (kind.supportsArt) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text("Colors from album art", style = MaterialTheme.typography.titleMedium)
+                Switch(checked = cfg.artColors, onCheckedChange = { cfg = cfg.copy(artColors = it) })
+            }
+        }
+
+        Text(if (kind.supportsArt) "Widget roundness" else "Roundness", style = MaterialTheme.typography.titleMedium)
         Slider(value = cfg.roundness, onValueChange = { cfg = cfg.copy(roundness = it) })
+
+        if (kind.supportsArt) {
+            Text("Album art roundness", style = MaterialTheme.typography.titleMedium)
+            Slider(value = cfg.artRoundness, onValueChange = { cfg = cfg.copy(artRoundness = it) })
+
+            Text("Height", style = MaterialTheme.typography.titleMedium)
+            Slider(
+                value = cfg.heightScale,
+                onValueChange = { cfg = cfg.copy(heightScale = it) },
+                valueRange = 0.6f..1.6f,
+            )
+        }
 
         if (kind.usesEarphones) {
             Text("Earphones", style = MaterialTheme.typography.titleMedium)
