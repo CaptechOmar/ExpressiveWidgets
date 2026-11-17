@@ -1,26 +1,26 @@
 package com.captechomar.widgets.widgets
 
-import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
 import android.content.res.Configuration
 import android.widget.RemoteViews
 import com.captechomar.widgets.R
-import com.captechomar.widgets.ui.MainActivity
+import com.captechomar.widgets.data.WidgetPrefs
 import kotlin.math.max
 import kotlin.math.min
 
 object WidgetUpdater {
 
     fun updateAll(context: Context) {
+        WidgetKinds.all.forEach { updateKind(context, it) }
+    }
+
+    fun updateKind(context: Context, kind: WidgetKind) {
         val app = context.applicationContext
         val awm = AppWidgetManager.getInstance(app)
-        for (kind in WidgetKinds.all) {
-            for (id in awm.getAppWidgetIds(ComponentName(app, kind.providerClass))) {
-                update(app, awm, kind, id)
-            }
+        for (id in awm.getAppWidgetIds(ComponentName(app, kind.providerClass))) {
+            update(app, awm, kind, id)
         }
     }
 
@@ -32,14 +32,10 @@ object WidgetUpdater {
     private fun update(context: Context, awm: AppWidgetManager, kind: WidgetKind, widgetId: Int) {
         try {
             val (w, h) = sizePx(context, awm, widgetId)
-            val bitmap = kind.render(context, widgetId, w, h)
-            val views = RemoteViews(context.packageName, R.layout.widget_image)
+            val bitmap = kind.render(context, WidgetPrefs.load(context, widgetId), w, h)
+            val views = RemoteViews(context.packageName, kind.layoutRes)
             views.setImageViewBitmap(R.id.widget_image, bitmap)
-            val open = PendingIntent.getActivity(
-                context, 0, Intent(context, MainActivity::class.java),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-            views.setOnClickPendingIntent(R.id.widget_root, open)
+            kind.bindClicks(context, views, widgetId)
             awm.updateAppWidget(widgetId, views)
         } catch (_: Throwable) {
             // never let one widget crash the receiver

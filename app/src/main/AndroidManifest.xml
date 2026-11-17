@@ -44,6 +44,32 @@
         </receiver>
 
         <receiver
+            android:name=".widgets.MusicWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_music_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/music_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.MediaActionReceiver"
+            android:exported="false" />
+
+        <service
+            android:name=".music.MediaListenerService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <receiver
             android:name=".widgets.EventReceiver"
             android:exported="true">
             <intent-filter>

@@ -1,7 +1,9 @@
 package com.captechomar.widgets.ui
 
 import android.Manifest
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -36,13 +38,14 @@ import androidx.compose.ui.unit.dp
 import com.captechomar.widgets.data.BatteryReader
 import com.captechomar.widgets.data.WidgetConfig
 import com.captechomar.widgets.data.WidgetPrefs
-import com.captechomar.widgets.widgets.BatteryRenderer
+import com.captechomar.widgets.music.MediaAccess
+import com.captechomar.widgets.widgets.WidgetKind
 import com.captechomar.widgets.widgets.Palettes
 
 /** Settings for one battery widget with a live preview. Shared by the widget-configure screen and the main app. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun ConfigPanel(widgetId: Int, saveLabel: String, onSaved: () -> Unit) {
+fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () -> Unit) {
     val context = LocalContext.current
     var cfg by remember { mutableStateOf(WidgetPrefs.load(context, widgetId)) }
     var hasPermission by remember { mutableStateOf(BatteryReader.hasBluetoothPermission(context)) }
@@ -53,7 +56,12 @@ fun ConfigPanel(widgetId: Int, saveLabel: String, onSaved: () -> Unit) {
         devices = BatteryReader.pairedDevices(context)
     }
 
-    val preview = remember(cfg, hasPermission) { BatteryRenderer.render(context, cfg, 900, 230) }
+    var notificationAccess by remember { mutableStateOf(MediaAccess.isEnabled(context)) }
+    val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        notificationAccess = MediaAccess.isEnabled(context)
+    }
+
+    val preview = remember(cfg, hasPermission) { kind.render(context, cfg, 900, 230) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Image(
@@ -77,25 +85,41 @@ fun ConfigPanel(widgetId: Int, saveLabel: String, onSaved: () -> Unit) {
         Text("Roundness", style = MaterialTheme.typography.titleMedium)
         Slider(value = cfg.roundness, onValueChange = { cfg = cfg.copy(roundness = it) })
 
-        Text("Earphones", style = MaterialTheme.typography.titleMedium)
-        if (!hasPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (kind.usesEarphones) {
+            Text("Earphones", style = MaterialTheme.typography.titleMedium)
+            if (!hasPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                Text(
+                    "Allow Bluetooth access so the widget can read your earphones' battery.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                FilledTonalButton(onClick = { permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT) }) {
+                    Text("Allow Bluetooth access")
+                }
+            } else {
+                DeviceRow("Automatic (first connected audio device)", cfg.deviceAddress == null) {
+                    cfg = cfg.copy(deviceAddress = null)
+                }
+                devices.forEach { d ->
+                    DeviceRow(d.name, cfg.deviceAddress == d.address) { cfg = cfg.copy(deviceAddress = d.address) }
+                }
+                if (devices.isEmpty()) {
+                    Text("No paired Bluetooth devices found.", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+
+        }
+
+        if (kind.needsNotificationAccess && !notificationAccess) {
+            Text("Notification access", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Allow Bluetooth access so the widget can read your earphones' battery.",
+                "Android only lets an app see what's playing through notification access. " +
+                    "If the switch is greyed out, open this app's info page, tap the three dots and choose " +
+                    "\"Allow restricted settings\" first.",
                 style = MaterialTheme.typography.bodyMedium,
             )
-            FilledTonalButton(onClick = { permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT) }) {
-                Text("Allow Bluetooth access")
-            }
-        } else {
-            DeviceRow("Automatic (first connected audio device)", cfg.deviceAddress == null) {
-                cfg = cfg.copy(deviceAddress = null)
-            }
-            devices.forEach { d ->
-                DeviceRow(d.name, cfg.deviceAddress == d.address) { cfg = cfg.copy(deviceAddress = d.address) }
-            }
-            if (devices.isEmpty()) {
-                Text("No paired Bluetooth devices found.", style = MaterialTheme.typography.bodyMedium)
-            }
+            FilledTonalButton(onClick = {
+                notificationLauncher.launch(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+            }) { Text("Open notification access") }
         }
 
         Button(

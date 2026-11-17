@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageView
+        android:id="@+id/widget_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@string/widget_music_name"
+        android:scaleType="fitXY" />
+
+    <!-- Invisible tap targets laid over the drawn bitmap. Weights must match MusicRenderer.CELLS. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/btn_play"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="22"
+            android:background="@null"
+            android:contentDescription="@string/music_play_pause" />
+
+        <ImageButton
+            android:id="@+id/btn_prev"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="16"
+            android:background="@null"
+            android:contentDescription="@string/music_previous" />
+
+        <ImageButton
+            android:id="@+id/btn_next"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="16"
+            android:background="@null"
+            android:contentDescription="@string/music_next" />
+
+        <ImageButton
+            android:id="@+id/btn_art"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="46"
+            android:background="@null"
+            android:contentDescription="@string/music_open_player" />
+    </LinearLayout>
+</FrameLayout>

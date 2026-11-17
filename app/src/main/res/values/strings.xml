@@ -3,4 +3,10 @@
     <string name="app_name">Expressive Widgets</string>
     <string name="widget_batteries_name">Batteries</string>
     <string name="widget_batteries_desc">Phone and Bluetooth earphones battery</string>
+    <string name="widget_music_name">Music</string>
+    <string name="widget_music_desc">Album art with play, previous and next controls</string>
+    <string name="music_play_pause">Play or pause</string>
+    <string name="music_previous">Previous track</string>
+    <string name="music_next">Next track</string>
+    <string name="music_open_player">Open music player</string>
 </resources>

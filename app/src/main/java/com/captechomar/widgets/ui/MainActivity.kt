@@ -29,7 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.captechomar.widgets.widgets.BatteryWidgetProvider
+import com.captechomar.widgets.widgets.WidgetKind
+import com.captechomar.widgets.widgets.WidgetKinds
 import com.captechomar.widgets.widgets.WidgetUpdater
 
 class MainActivity : ComponentActivity() {
@@ -46,7 +47,7 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                     ) {
                         Text("Expressive Widgets", style = MaterialTheme.typography.headlineLarge)
-                        AddWidgetCard()
+                        WidgetKinds.all.forEach { AddWidgetCard(it) }
                         WidgetList(refresh)
                     }
                 }
@@ -62,16 +63,16 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun AddWidgetCard() {
+private fun AddWidgetCard(kind: WidgetKind) {
     val context = LocalContext.current
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Batteries", style = MaterialTheme.typography.titleLarge)
-            Text("Phone and Bluetooth earphones battery on your home screen.", style = MaterialTheme.typography.bodyMedium)
+            Text(kind.title, style = MaterialTheme.typography.titleLarge)
+            Text(kind.description, style = MaterialTheme.typography.bodyMedium)
             val awm = AppWidgetManager.getInstance(context)
             if (awm.isRequestPinAppWidgetSupported) {
                 Button(onClick = {
-                    awm.requestPinAppWidget(ComponentName(context, BatteryWidgetProvider::class.java), null, null)
+                    awm.requestPinAppWidget(ComponentName(context, kind.providerClass), null, null)
                 }) { Text("Add to home screen") }
             } else {
                 Text("Long-press your home screen, open Widgets and pick Expressive Widgets.", style = MaterialTheme.typography.bodySmall)
@@ -83,23 +84,26 @@ private fun AddWidgetCard() {
 @Composable
 private fun WidgetList(refresh: Int) {
     val context = LocalContext.current
-    val ids = AppWidgetManager.getInstance(context)
-        .getAppWidgetIds(ComponentName(context, BatteryWidgetProvider::class.java))
-        .toList()
-    @Suppress("UNUSED_EXPRESSION") refresh
-    if (ids.isEmpty()) {
+    val awm = AppWidgetManager.getInstance(context)
+    val placed = if (refresh >= 0) {
+        WidgetKinds.all.flatMap { kind ->
+            awm.getAppWidgetIds(ComponentName(context, kind.providerClass)).mapIndexed { i, id -> Triple(kind, i + 1, id) }
+        }
+    } else emptyList()
+
+    if (placed.isEmpty()) {
         Text("No widgets placed yet.", style = MaterialTheme.typography.bodyMedium)
         return
     }
     Text("Your widgets", style = MaterialTheme.typography.titleMedium)
-    ids.forEachIndexed { index, id ->
+    placed.forEach { (kind, number, id) ->
         Card(modifier = Modifier.fillMaxWidth()) {
             Row(
                 Modifier.fillMaxWidth().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text("Batteries #${index + 1}", style = MaterialTheme.typography.titleMedium)
+                Text("${kind.title} #$number", style = MaterialTheme.typography.titleMedium)
                 FilledTonalButton(onClick = {
                     context.startActivity(
                         Intent(context, WidgetConfigActivity::class.java)

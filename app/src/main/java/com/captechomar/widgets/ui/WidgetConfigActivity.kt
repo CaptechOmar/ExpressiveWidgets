@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.captechomar.widgets.widgets.BatteryKind
+import com.captechomar.widgets.widgets.WidgetKinds
 import com.captechomar.widgets.widgets.WidgetUpdater
 
 /** Opened by the launcher when a widget is placed, and from the main screen to edit an existing one. */
@@ -31,6 +32,9 @@ class WidgetConfigActivity : ComponentActivity() {
             finish()
             return
         }
+        val kind = WidgetKinds.byProvider(
+            AppWidgetManager.getInstance(this).getAppWidgetInfo(widgetId)?.provider?.className
+        ) ?: BatteryKind
         enableEdgeToEdge()
         setContent {
             AppTheme {
@@ -38,9 +42,9 @@ class WidgetConfigActivity : ComponentActivity() {
                     Column(
                         modifier = Modifier.systemBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
                     ) {
-                        Text("Batteries widget", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 16.dp))
-                        ConfigPanel(widgetId = widgetId, saveLabel = "Done") {
-                            WidgetUpdater.update(applicationContext, BatteryKind, widgetId)
+                        Text("${kind.title} widget", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 16.dp))
+                        ConfigPanel(widgetId = widgetId, kind = kind, saveLabel = "Done") {
+                            WidgetUpdater.update(applicationContext, kind, widgetId)
                             setResult(Activity.RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
                             finish()
                         }
