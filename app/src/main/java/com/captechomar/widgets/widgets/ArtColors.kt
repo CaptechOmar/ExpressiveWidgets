@@ -95,10 +95,15 @@ object ArtColors {
         for (i in 0 until BUCKETS) if (hueDistance(i * 30f + 15f, hueP) >= 70f) otherCount += count[i]
         val other = if (colored > 0) otherCount.toFloat() / colored else 0f
 
+        val reddish = hueP < 20f || hueP > 330f
+        // a cover whose only color is one strong hue (e.g. a red tail light on grey) uses that hue
+        val singleHue = main >= 0 && share >= 0.9f && other < 0.05f && satP >= 0.65f && mainCount >= total * 0.035f
+
         val mode = when {
+            singleHue -> Mode.VIVID
             main < 0 || (darkCount >= total * 0.12f && darkCount >= mainCount * 0.9f) -> Mode.DARK_BG
-            valP >= 0.72f && satP <= 0.62f && mainCount >= total * 0.10f -> Mode.LIGHT
-            satP >= 0.55f && share >= 0.55f && other < 0.09f && mainCount >= total * 0.10f -> Mode.VIVID
+            valP >= 0.72f && satP <= 0.62f && !reddish && mainCount >= total * 0.10f -> Mode.LIGHT
+            (satP >= 0.55f || (reddish && satP >= 0.45f)) && share >= 0.55f && other < 0.09f && mainCount >= total * 0.10f -> Mode.VIVID
             else -> Mode.MUTED
         }
 
@@ -131,7 +136,7 @@ object ArtColors {
         if (mode == Mode.VIVID) {
             // orange covers lean slightly toward red, which reads richer
             val hue = if (hueP < 45f) hueP * 0.7f else hueP
-            val bgS = (satP + 0.12f).coerceIn(0.72f, 0.97f)
+            val bgS = if (reddish) (satP + 0.4f).coerceIn(0.88f, 0.97f) else (satP + 0.12f).coerceIn(0.72f, 0.97f)
             // equal perceived lightness for every hue, so cyan and red look equally deep
             val bgV = valueForLightness(hue, bgS, 36f).coerceIn(0.4f, 0.8f)
             return if (dark) WidgetColors(
@@ -151,7 +156,18 @@ object ArtColors {
         val bgHue: Float
         val bgSat: Float
         val bgVal: Float
-        if (mode == Mode.DARK_BG && darkCount > 0) {
+        // darkest strongly colored area (e.g. a blue shirt in shadow) when the dark pixels themselves are neutral
+        var shadow = -1
+        for (i in 0 until BUCKETS) {
+            if (count[i] < total * 0.03f) continue
+            if (satSum[i] / count[i] < 0.5f || valSum[i] / count[i] > 0.45f) continue
+            if (shadow < 0 || count[i] > count[shadow]) shadow = i
+        }
+        if (mode == Mode.DARK_BG && shadow >= 0) {
+            bgHue = hueSum[shadow] / count[shadow]
+            bgSat = (satSum[shadow] / count[shadow]).coerceIn(0.6f, 0.95f)
+            bgVal = 0.24f
+        } else if (mode == Mode.DARK_BG && darkCount > 0) {
             Color.colorToHSV(
                 Color.rgb((dR / darkCount).toInt(), (dG / darkCount).toInt(), (dB / darkCount).toInt()), hsv,
             )
@@ -162,7 +178,7 @@ object ArtColors {
             // pale or greyish blue covers read better as a navy than as a slate
             bgHue = if (hueP in 180f..235f && satP < 0.5f) hueP + (235f - hueP) * 0.6f else hueP
             bgSat = satP.coerceIn(0.35f, 0.85f)
-            bgVal = if (hueP in 150f..270f) 0.30f else 0.25f
+            bgVal = if (hueP in 150f..270f) 0.26f else 0.25f
         }
 
         // accent: best vivid hue window (30 degrees wide) that differs from the background hue
@@ -171,6 +187,7 @@ object ArtColors {
         var accVal = 0.9f
         var bestScore = 0f
         var bestShare = 0f
+        var bestSat = 0f
         // warm yellow / khaki areas are preferred unless a big red or orange area competes with them
         var warmHue = -1f
         var warmSat = 0f
@@ -201,14 +218,15 @@ object ArtColors {
                 bestScore = score
                 bestShare = n.toFloat() / total
                 accHue = hue
-                accSat = (sat * 1.2f + 0.1f).coerceIn(0.45f, 0.85f)
+                accSat = (sat * 1.2f + 0.1f).coerceIn(0.45f, 0.95f)
+                bestSat = sat
                 accVal = vv.coerceIn(0.78f, 0.93f)
             }
         }
-        if (warmHue >= 0f && bestShare < 0.08f) {
+        if (warmHue >= 0f && bestShare < 0.08f && bestSat < 0.75f) {
             bestScore = 1f
             accHue = warmHue
-            accSat = (warmSat * 1.2f + 0.1f).coerceIn(0.45f, 0.85f)
+            accSat = (warmSat * 1.2f + 0.1f).coerceIn(0.45f, 0.95f)
             accVal = warmVal.coerceIn(0.78f, 0.93f)
         }
         if (bestScore == 0f) {
@@ -217,7 +235,7 @@ object ArtColors {
             accHue = bgHue
         }
 
-        if (dark && mode == Mode.MUTED && satP >= 0.8f && mainCount >= total * 0.25f && bestScore > 0f) {
+        if (dark && mode == Mode.MUTED && reddish && satP >= 0.8f && mainCount >= total * 0.25f && bestScore > 0f) {
             val rich = valueForLightness(bgHue, 0.93f, 27f).coerceIn(0.4f, 0.7f)
             return WidgetColors(
                 container = hsvColor(bgHue, 0.93f, rich),
