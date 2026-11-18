@@ -60,8 +60,8 @@ object BatteryKind : WidgetKind {
         context: Context, views: RemoteViews, widgetId: Int, cfg: WidgetConfig, widthDp: Float, heightDp: Float,
     ) {
         val ids = intArrayOf(R.id.block0, R.id.block1, R.id.block2, R.id.block3, R.id.block4)
-        val devices = BatteryReader.devices(context, cfg.deviceAddresses)
-        val keys = listOf(TapAction.PHONE) + devices.map { if (cfg.deviceAddresses.isEmpty()) TapAction.AUTO else it.address }
+        val devices = BatteryReader.devices(context, cfg.deviceAddresses, cfg.manualDevices)
+        val keys = listOf(TapAction.PHONE) + devices.map { it.address }
         ids.forEachIndexed { i, id ->
             if (i >= keys.size) {
                 views.setViewVisibility(id, View.GONE)

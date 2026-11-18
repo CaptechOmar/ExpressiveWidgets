@@ -13,6 +13,7 @@ import com.captechomar.widgets.data.BatteryReader
 import com.captechomar.widgets.data.BtBattery
 import com.captechomar.widgets.data.DeviceKind
 import com.captechomar.widgets.data.PhoneBattery
+import com.captechomar.widgets.data.TapAction
 import com.captechomar.widgets.data.WidgetConfig
 import kotlin.math.max
 import kotlin.math.min
@@ -36,7 +37,7 @@ object BatteryRenderer {
         w: Int,
         h: Int,
         phone: PhoneBattery = BatteryReader.phone(context),
-        others: List<BtBattery> = BatteryReader.devices(context, cfg.deviceAddresses),
+        others: List<BtBattery> = BatteryReader.devices(context, cfg.deviceAddresses, cfg.manualDevices),
     ): Bitmap {
         val bmp = Bitmap.createBitmap(max(w, 1), max(h, 1), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
@@ -57,15 +58,11 @@ object BatteryRenderer {
 
         drawBar(
             context, canvas, paint, RectF(pad, pad, pad + trackW, pad + trackH), trackR, col,
-            percent = phone.percent, icon = R.drawable.ic_phone, charging = phone.charging,
+            percent = phone.percent,
+            icon = DeviceIcons.res(cfg.icons[TapAction.PHONE] ?: DeviceIcons.defaultChoice(TapAction.PHONE, DeviceKind.OTHER)), charging = phone.charging,
         )
         others.forEachIndexed { i, device ->
-            val icon = when (device.kind) {
-                DeviceKind.WATCH -> R.drawable.ic_watch
-                DeviceKind.EARBUDS -> R.drawable.ic_earbuds
-                DeviceKind.HEADPHONES -> R.drawable.ic_earbuds
-                DeviceKind.OTHER -> R.drawable.ic_bluetooth
-            }
+            val icon = DeviceIcons.res(cfg.icons[device.address] ?: DeviceIcons.defaultChoice(device.address, device.kind))
             val left = pad + (i + 1) * (trackW + gap)
             drawBar(
                 context, canvas, paint, RectF(left, pad, left + trackW, pad + trackH), trackR, col,

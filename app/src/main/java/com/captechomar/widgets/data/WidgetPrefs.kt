@@ -5,6 +5,9 @@ import android.content.SharedPreferences
 import org.json.JSONArray
 import org.json.JSONObject
 
+/** An icon picked for a block of the battery widget. */
+data class IconChoice(val id: String, val filled: Boolean = false)
+
 /** Per-widget configuration. Add new fields here (with defaults) when new options are needed. */
 data class WidgetConfig(
     val palette: String = "dynamic",
@@ -20,6 +23,12 @@ data class WidgetConfig(
     val heightScale: Float = 1f,
     /** Tap action per block of the battery widget: [TapAction.PHONE], a device address, or [TapAction.AUTO]. */
     val tapActions: Map<String, TapAction> = emptyMap(),
+    /** True once the devices were picked by hand. Until then an empty list means the automatic pick. */
+    val manualDevices: Boolean = false,
+    /** Every device in the order shown in the settings; [deviceAddresses] is the enabled part of it. */
+    val deviceOrder: List<String> = emptyList(),
+    /** Icon per block: [TapAction.PHONE] or a device address. */
+    val icons: Map<String, IconChoice> = emptyMap(),
 )
 
 object WidgetPrefs {
@@ -46,6 +55,23 @@ object WidgetPrefs {
         emptyMap()
     }
 
+    private fun readList(sp: SharedPreferences, name: String): List<String> = try {
+        val arr = JSONArray(sp.getString(name, "[]") ?: "[]")
+        (0 until arr.length()).map { arr.getString(it) }
+    } catch (_: Throwable) {
+        emptyList()
+    }
+
+    private fun readIcons(sp: SharedPreferences, widgetId: Int): Map<String, IconChoice> = try {
+        val o = JSONObject(sp.getString("${widgetId}_icons", "{}") ?: "{}")
+        o.keys().asSequence().associateWith {
+            val c = o.getJSONObject(it)
+            IconChoice(c.getString("id"), c.optBoolean("filled"))
+        }
+    } catch (_: Throwable) {
+        emptyMap()
+    }
+
     fun load(context: Context, widgetId: Int, defaults: WidgetConfig = WidgetConfig()): WidgetConfig {
         val sp = sp(context)
         return WidgetConfig(
@@ -56,6 +82,9 @@ object WidgetPrefs {
             artColors = sp.getBoolean("${widgetId}_art_colors", defaults.artColors),
             heightScale = sp.getFloat("${widgetId}_height_scale", defaults.heightScale),
             tapActions = readActions(sp, widgetId),
+            manualDevices = sp.getBoolean("${widgetId}_manual", false),
+            deviceOrder = readList(sp, "${widgetId}_order"),
+            icons = readIcons(sp, widgetId),
         )
     }
 
@@ -69,6 +98,11 @@ object WidgetPrefs {
         val actions = JSONObject()
         cfg.tapActions.filterValues { it.type != TapAction.Type.DEFAULT }.forEach { (k, v) -> actions.put(k, v.toJson()) }
         e.putString("${widgetId}_actions", actions.toString())
+        e.putBoolean("${widgetId}_manual", cfg.manualDevices)
+        e.putString("${widgetId}_order", JSONArray(cfg.deviceOrder).toString())
+        val icons = JSONObject()
+        cfg.icons.forEach { (k, v) -> icons.put(k, JSONObject().put("id", v.id).put("filled", v.filled)) }
+        e.putString("${widgetId}_icons", icons.toString())
         e.remove("${widgetId}_device")
         if (cfg.deviceAddresses.isEmpty()) e.remove("${widgetId}_devices")
         else e.putString("${widgetId}_devices", JSONArray(cfg.deviceAddresses).toString())
@@ -85,6 +119,9 @@ object WidgetPrefs {
             .remove("${widgetId}_art_colors")
             .remove("${widgetId}_height_scale")
             .remove("${widgetId}_actions")
+            .remove("${widgetId}_manual")
+            .remove("${widgetId}_order")
+            .remove("${widgetId}_icons")
             .apply()
     }
 }

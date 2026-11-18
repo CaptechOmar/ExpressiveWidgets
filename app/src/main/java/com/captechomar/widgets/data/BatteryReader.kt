@@ -87,8 +87,8 @@ object BatteryReader {
      * The devices to draw next to the phone. With no devices chosen it is the automatic pick (one audio device);
      * otherwise every chosen device that is currently connected, in the order they were chosen.
      */
-    fun devices(context: Context, addresses: List<String>): List<BtBattery> {
-        if (addresses.isEmpty()) return listOfNotNull(earphones(context, null))
+    fun devices(context: Context, addresses: List<String>, manual: Boolean = false): List<BtBattery> {
+        if (addresses.isEmpty()) return if (manual) emptyList() else listOfNotNull(earphones(context, null))
         val connected by lazy { connectedDevices(context) }
         val gadgetbridge = GadgetbridgeStore.current(context)
         return addresses.mapNotNull { address ->

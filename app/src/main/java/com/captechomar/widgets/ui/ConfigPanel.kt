@@ -43,6 +43,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.captechomar.widgets.data.BatteryReader
+import com.captechomar.widgets.data.DeviceKind
 import com.captechomar.widgets.data.GadgetbridgeStore
 import com.captechomar.widgets.data.TapAction
 import com.captechomar.widgets.data.WidgetPrefs
@@ -65,6 +66,7 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
         devices = BatteryReader.pairedDevices(context)
     }
 
+    val autoPick = remember { if (kind.usesEarphones) setOfNotNull(BatteryReader.earphones(context, null)?.address) else emptySet() }
     var notificationAccess by remember { mutableStateOf(MediaAccess.isEnabled(context)) }
     val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         notificationAccess = MediaAccess.isEnabled(context)
@@ -129,13 +131,12 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
         )
 
         if (kind.usesEarphones) {
-            Text("Devices next to the phone", style = MaterialTheme.typography.titleMedium)
+            Text("Devices", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Tick as many devices as you like. Each one that is connected gets its own bar, in the order " +
-                    "you tick them. Nothing ticked means the first connected audio device.",
+                "Drag the handle to reorder. The toggle puts a device on the widget while it is connected. " +
+                    "The gear changes its icon and what happens when you tap it.",
                 style = MaterialTheme.typography.bodySmall,
             )
-            Text("Bluetooth", style = MaterialTheme.typography.titleSmall)
             if (!hasPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 Text(
                     "Allow Bluetooth access so the widget can read your earphones' battery.",
@@ -144,59 +145,27 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
                 FilledTonalButton(onClick = { permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT) }) {
                     Text("Allow Bluetooth access")
                 }
-            } else {
-                DeviceRow("Automatic (first connected audio device)", cfg.deviceAddresses.isEmpty(), single = true) {
-                    cfg = cfg.copy(deviceAddresses = emptyList())
-                }
-                devices.forEach { d ->
-                    DeviceRow(d.name, d.address in cfg.deviceAddresses) { cfg = cfg.copy(deviceAddresses = toggled(cfg.deviceAddresses, d.address)) }
-                }
-                if (devices.isEmpty()) {
-                    Text("No paired Bluetooth devices found.", style = MaterialTheme.typography.bodyMedium)
-                }
             }
-
-            Text("Gadgetbridge", style = MaterialTheme.typography.titleSmall)
             if (!notificationAccess) {
                 Text(
-                    "Gadgetbridge has no battery API, but it shows every device's battery in its always-on " +
-                        "notification. Allow notification access so the widget can read it. If the switch is " +
-                        "greyed out, open this app's info page, tap the three dots and choose " +
-                        "\"Allow restricted settings\" first.",
+                    "For Gadgetbridge devices, allow notification access so the widget can read the battery " +
+                        "from Gadgetbridge's notification. If the switch is greyed out, open this app's info page, " +
+                        "tap the three dots and choose \"Allow restricted settings\" first.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
                 FilledTonalButton(onClick = {
                     notificationLauncher.launch(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                 }) { Text("Open notification access") }
-            } else {
-                val chosen = cfg.deviceAddresses.filter { GadgetbridgeStore.isGbAddress(it) }.map { GadgetbridgeStore.nameOf(it) }
-                val names = (GadgetbridgeStore.known(context) + chosen).distinct().sorted()
-                if (names.isEmpty()) {
-                    Text(
-                        "No Gadgetbridge devices seen yet. Connect a device in Gadgetbridge and it will appear here. " +
-                            "Its battery level has to be shown in Gadgetbridge's notification.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                } else {
-                    names.forEach { name ->
-                        val address = GadgetbridgeStore.addressOf(name)
-                        DeviceRow(name, address in cfg.deviceAddresses) { cfg = cfg.copy(deviceAddresses = toggled(cfg.deviceAddresses, address)) }
-                    }
-                }
             }
-        }
-
-        if (kind.usesEarphones) {
-            val blocks = buildList {
-                add(TapBlock(TapAction.PHONE, "Phone"))
-                if (cfg.deviceAddresses.isEmpty()) add(TapBlock(TapAction.AUTO, "Automatic device"))
-                cfg.deviceAddresses.forEach { a ->
-                    val name = if (GadgetbridgeStore.isGbAddress(a)) GadgetbridgeStore.nameOf(a)
-                    else devices.firstOrNull { it.address == a }?.name ?: a
-                    add(TapBlock(a, name))
-                }
+            val entries = ArrayList<DeviceEntry>()
+            devices.forEach { entries += DeviceEntry(it.address, it.name, it.kind) }
+            GadgetbridgeStore.known(context).forEach {
+                entries += DeviceEntry(GadgetbridgeStore.addressOf(it), it, DeviceKind.fromName(it) ?: DeviceKind.WATCH)
             }
-            TapActionSection(blocks, cfg.tapActions) { key, action -> cfg = cfg.copy(tapActions = cfg.tapActions + (key to action)) }
+            cfg.deviceAddresses.filter { a -> entries.none { it.key == a } }.forEach { a ->
+                entries += DeviceEntry(a, if (GadgetbridgeStore.isGbAddress(a)) GadgetbridgeStore.nameOf(a) else a, DeviceKind.OTHER)
+            }
+            DeviceList(cfg, entries, autoPick) { cfg = it }
         }
 
         if (kind.needsNotificationAccess && !notificationAccess) {
