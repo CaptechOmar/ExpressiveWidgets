@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LocalTextStyle
@@ -127,7 +128,13 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
         )
 
         if (kind.usesEarphones) {
-            Text("Bluetooth devices", style = MaterialTheme.typography.titleMedium)
+            Text("Devices next to the phone", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Tick as many devices as you like. Each one that is connected gets its own bar, in the order " +
+                    "you tick them. Nothing ticked means the first connected audio device.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            Text("Bluetooth", style = MaterialTheme.typography.titleSmall)
             if (!hasPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 Text(
                     "Allow Bluetooth access so the widget can read your earphones' battery.",
@@ -137,18 +144,18 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
                     Text("Allow Bluetooth access")
                 }
             } else {
-                DeviceRow("Automatic (first connected audio device)", cfg.deviceAddress == null) {
-                    cfg = cfg.copy(deviceAddress = null)
+                DeviceRow("Automatic (first connected audio device)", cfg.deviceAddresses.isEmpty(), single = true) {
+                    cfg = cfg.copy(deviceAddresses = emptyList())
                 }
                 devices.forEach { d ->
-                    DeviceRow(d.name, cfg.deviceAddress == d.address) { cfg = cfg.copy(deviceAddress = d.address) }
+                    DeviceRow(d.name, d.address in cfg.deviceAddresses) { cfg = cfg.copy(deviceAddresses = toggled(cfg.deviceAddresses, d.address)) }
                 }
                 if (devices.isEmpty()) {
                     Text("No paired Bluetooth devices found.", style = MaterialTheme.typography.bodyMedium)
                 }
             }
 
-            Text("Gadgetbridge devices", style = MaterialTheme.typography.titleMedium)
+            Text("Gadgetbridge", style = MaterialTheme.typography.titleSmall)
             if (!notificationAccess) {
                 Text(
                     "Gadgetbridge has no battery API, but it shows every device's battery in its always-on " +
@@ -161,8 +168,8 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
                     notificationLauncher.launch(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
                 }) { Text("Open notification access") }
             } else {
-                val chosen = cfg.deviceAddress?.takeIf { GadgetbridgeStore.isGbAddress(it) }?.let { GadgetbridgeStore.nameOf(it) }
-                val names = (GadgetbridgeStore.known(context) + listOfNotNull(chosen)).distinct().sorted()
+                val chosen = cfg.deviceAddresses.filter { GadgetbridgeStore.isGbAddress(it) }.map { GadgetbridgeStore.nameOf(it) }
+                val names = (GadgetbridgeStore.known(context) + chosen).distinct().sorted()
                 if (names.isEmpty()) {
                     Text(
                         "No Gadgetbridge devices seen yet. Connect a device in Gadgetbridge and it will appear here. " +
@@ -172,7 +179,7 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
                 } else {
                     names.forEach { name ->
                         val address = GadgetbridgeStore.addressOf(name)
-                        DeviceRow(name, cfg.deviceAddress == address) { cfg = cfg.copy(deviceAddress = address) }
+                        DeviceRow(name, address in cfg.deviceAddresses) { cfg = cfg.copy(deviceAddresses = toggled(cfg.deviceAddresses, address)) }
                     }
                 }
             }
@@ -241,13 +248,17 @@ private fun NumberSlider(label: String, value: Int, range: IntRange, onChange: (
     }
 }
 
+private fun toggled(list: List<String>, address: String): List<String> =
+    if (address in list) list - address else list + address
+
+/** A device in the picker: a checkbox for devices, a radio button for the "automatic" row. */
 @Composable
-private fun DeviceRow(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun DeviceRow(label: String, selected: Boolean, single: Boolean = false, onClick: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = selected, onClick = null)
+        if (single) RadioButton(selected = selected, onClick = null) else Checkbox(checked = selected, onCheckedChange = null)
         Spacer(Modifier.width(12.dp))
         Text(label, style = MaterialTheme.typography.bodyLarge)
     }

@@ -62,6 +62,27 @@ object BatteryReader {
         }
     }
 
+    /** Most devices drawn next to the phone. */
+    const val MAX_DEVICES = 4
+
+    /**
+     * The devices to draw next to the phone. With no devices chosen it is the automatic pick (one audio device);
+     * otherwise every chosen device that is currently connected, in the order they were chosen.
+     */
+    fun devices(context: Context, addresses: List<String>): List<BtBattery> {
+        if (addresses.isEmpty()) return listOfNotNull(earphones(context, null))
+        val connected by lazy { connectedDevices(context) }
+        val gadgetbridge = GadgetbridgeStore.current(context)
+        return addresses.mapNotNull { address ->
+            if (GadgetbridgeStore.isGbAddress(address)) {
+                val name = GadgetbridgeStore.nameOf(address)
+                gadgetbridge.firstOrNull { it.name == name }?.let { BtBattery(it.name, address, it.percent, isAudio = false) }
+            } else {
+                connected.firstOrNull { it.address == address }
+            }
+        }.distinctBy { it.address }.take(MAX_DEVICES)
+    }
+
     /**
      * Picks the device to show next to the phone: the chosen one if it is connected, otherwise the best
      * connected audio device. Returns null when nothing is connected, and the widget then shows the phone alone.

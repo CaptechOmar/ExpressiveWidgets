@@ -18,9 +18,9 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Draws the battery widget into a bitmap: the phone on the left and, when one is connected, a second
- * device (earphones, or a Gadgetbridge device) on the right. With nothing connected, the phone bar
- * fills the whole widget.
+ * Draws the battery widget into a bitmap: the phone on the left, then one bar for every connected device
+ * that was chosen (earphones, Gadgetbridge devices...). With nothing connected, the phone bar fills the
+ * whole widget. All bars are the same width.
  */
 object BatteryRenderer {
 
@@ -35,7 +35,7 @@ object BatteryRenderer {
         w: Int,
         h: Int,
         phone: PhoneBattery = BatteryReader.phone(context),
-        buds: BtBattery? = BatteryReader.earphones(context, cfg.deviceAddress),
+        others: List<BtBattery> = BatteryReader.devices(context, cfg.deviceAddresses),
     ): Bitmap {
         val bmp = Bitmap.createBitmap(max(w, 1), max(h, 1), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
@@ -46,7 +46,8 @@ object BatteryRenderer {
         val pad = h * 0.10f
         val gap = h * 0.07f
         val trackH = h - 2 * pad
-        val trackW = if (buds != null) (w - 2 * pad - gap) / 2f else w - 2 * pad
+        val bars = 1 + others.size
+        val trackW = (w - 2 * pad - gap * (bars - 1)) / bars
         val trackR = trackH * 0.5f * k
         val outerR = min(trackR + pad, h / 2f)
 
@@ -57,14 +58,15 @@ object BatteryRenderer {
             context, canvas, paint, RectF(pad, pad, pad + trackW, pad + trackH), trackR, col,
             percent = phone.percent, icon = R.drawable.ic_phone, charging = phone.charging,
         )
-        if (buds != null) {
+        others.forEachIndexed { i, device ->
             val icon = when {
-                GadgetbridgeStore.isGbAddress(buds.address) -> R.drawable.ic_watch
+                GadgetbridgeStore.isGbAddress(device.address) -> R.drawable.ic_watch
                 else -> R.drawable.ic_headphones
             }
+            val left = pad + (i + 1) * (trackW + gap)
             drawBar(
-                context, canvas, paint, RectF(w - pad - trackW, pad, w - pad, pad + trackH), trackR, col,
-                percent = buds.percent, icon = icon, charging = false,
+                context, canvas, paint, RectF(left, pad, left + trackW, pad + trackH), trackR, col,
+                percent = device.percent, icon = icon, charging = false,
             )
         }
         return bmp
@@ -94,23 +96,33 @@ object BatteryRenderer {
             canvas.drawRoundRect(RectF(track.left, track.top, track.left + fillW, track.bottom), fillR, fillR, paint)
         }
 
-        val iconSize = trackH * ICON_SIZE
-        val cy = track.centerY()
-        drawIcon(context, canvas, icon, track.left + trackH * EDGE_MARGIN, cy, iconSize, col.content)
-
-        paint.color = col.content
-        paint.textSize = trackH * TEXT_SIZE
+        val text = if (percent >= 0) "$percent%" else "--"
         paint.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         paint.textAlign = Paint.Align.RIGHT
-        val text = if (percent >= 0) "$percent%" else "--"
+        paint.textSize = trackH * TEXT_SIZE
+
+        // With many devices the bars get narrow: scale the icon, margins and text together so they still fit.
+        val baseIcon = trackH * ICON_SIZE
+        val baseMargin = trackH * EDGE_MARGIN
+        val needed = 2 * baseMargin + baseIcon + trackH * 0.06f + paint.measureText(text) +
+            (if (charging) baseIcon * 0.85f else 0f)
+        val scale = min(1f, track.width() / needed)
+        val iconSize = baseIcon * scale
+        val margin = baseMargin * scale
+        paint.textSize = trackH * TEXT_SIZE * scale
+
+        val cy = track.centerY()
+        drawIcon(context, canvas, icon, track.left + margin, cy, iconSize, col.content)
+
+        paint.color = col.content
         val fm = paint.fontMetrics
-        val textRight = track.right - trackH * EDGE_MARGIN
+        val textRight = track.right - margin
         canvas.drawText(text, textRight, cy - (fm.ascent + fm.descent) / 2f, paint)
 
         if (charging) {
             val textLeft = textRight - paint.measureText(text)
             val boltSize = iconSize * 0.85f
-            drawIcon(context, canvas, R.drawable.ic_bolt, textLeft - boltSize - trackH * 0.04f, cy, boltSize, col.content)
+            drawIcon(context, canvas, R.drawable.ic_bolt, textLeft - boltSize - trackH * 0.04f * scale, cy, boltSize, col.content)
         }
     }
 
