@@ -7,5 +7,5 @@
         android:strokeLineCap="butt"
         android:strokeLineJoin="miter"
         android:strokeMiterLimit="6"
-        android:pathData="M5.8,5 L5.8,19 M17.6,6.3 L17.6,17.7 L10.4,12 Z" />
+        android:pathData="M4.6,3.7 L4.6,20.3 M18.66,5.2 L18.66,18.8 L10.1,12 Z" />
 </vector>
