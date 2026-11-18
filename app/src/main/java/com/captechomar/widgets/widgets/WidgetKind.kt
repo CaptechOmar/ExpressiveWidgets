@@ -6,9 +6,12 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Build
 import android.util.TypedValue
+import android.view.View
 import android.widget.RemoteViews
 import androidx.annotation.LayoutRes
 import com.captechomar.widgets.R
+import com.captechomar.widgets.data.BatteryReader
+import com.captechomar.widgets.data.TapAction
 import com.captechomar.widgets.data.WidgetConfig
 import com.captechomar.widgets.music.MusicStore
 import com.captechomar.widgets.ui.MainActivity
@@ -56,7 +59,33 @@ object BatteryKind : WidgetKind {
     override fun bindClicks(
         context: Context, views: RemoteViews, widgetId: Int, cfg: WidgetConfig, widthDp: Float, heightDp: Float,
     ) {
-        views.setOnClickPendingIntent(R.id.widget_root, openAppIntent(context, 0))
+        val ids = intArrayOf(R.id.block0, R.id.block1, R.id.block2, R.id.block3, R.id.block4)
+        val devices = BatteryReader.devices(context, cfg.deviceAddresses)
+        val keys = listOf(TapAction.PHONE) + devices.map { if (cfg.deviceAddresses.isEmpty()) TapAction.AUTO else it.address }
+        ids.forEachIndexed { i, id ->
+            if (i >= keys.size) {
+                views.setViewVisibility(id, View.GONE)
+                return@forEachIndexed
+            }
+            views.setViewVisibility(id, View.VISIBLE)
+            val action = cfg.tapActions[keys[i]] ?: TapAction()
+            val intent = when (action.type) {
+                TapAction.Type.NONE -> null
+                TapAction.Type.INTENT -> action.intent()
+                TapAction.Type.DEFAULT -> Intent(context, MainActivity::class.java)
+            } ?: Intent(context, MainActivity::class.java).takeIf { action.type != TapAction.Type.NONE }
+            if (intent == null) {
+                views.setOnClickPendingIntent(id, null)
+            } else {
+                views.setOnClickPendingIntent(
+                    id,
+                    PendingIntent.getActivity(
+                        context, widgetId * 10 + i, intent,
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                    ),
+                )
+            }
+        }
     }
 }
 

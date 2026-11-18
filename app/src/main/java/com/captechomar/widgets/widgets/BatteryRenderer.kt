@@ -26,8 +26,9 @@ object BatteryRenderer {
 
     // sizes relative to the bar height
     private const val ICON_SIZE = 0.30f
-    private const val TEXT_SIZE = 0.23f
-    private const val EDGE_MARGIN = 0.18f
+    private const val TEXT_SIZE = 0.185f
+    private const val ICON_MARGIN = 0.11f
+    private const val TEXT_MARGIN = 0.03f
 
     fun render(
         context: Context,
@@ -99,18 +100,20 @@ object BatteryRenderer {
         }
 
         val text = if (percent >= 0) "$percent%" else "--"
-        paint.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        paint.typeface = Typeface.create("sans-serif", Typeface.NORMAL)
         paint.textAlign = Paint.Align.RIGHT
         paint.textSize = trackH * TEXT_SIZE
 
         // With many devices the bars get narrow: scale the icon, margins and text together so they still fit.
         val baseIcon = trackH * ICON_SIZE
-        val baseMargin = trackH * EDGE_MARGIN
-        val needed = 2 * baseMargin + baseIcon + trackH * 0.06f + paint.measureText(text) +
+        val baseMargin = trackH * ICON_MARGIN
+        val baseTextMargin = trackH * TEXT_MARGIN
+        val needed = baseMargin + baseTextMargin + baseIcon + trackH * 0.06f + paint.measureText(text) +
             (if (charging) baseIcon * 0.85f else 0f)
         val scale = min(1f, track.width() / needed)
         val iconSize = baseIcon * scale
         val margin = baseMargin * scale
+        val textMargin = baseTextMargin * scale
         paint.textSize = trackH * TEXT_SIZE * scale
 
         val cy = track.centerY()
@@ -118,7 +121,7 @@ object BatteryRenderer {
 
         paint.color = col.content
         val fm = paint.fontMetrics
-        val textRight = track.right - margin
+        val textRight = track.right - textMargin
         canvas.drawText(text, textRight, cy - (fm.ascent + fm.descent) / 2f, paint)
 
         if (charging) {

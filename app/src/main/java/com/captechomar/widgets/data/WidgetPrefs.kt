@@ -3,6 +3,7 @@ package com.captechomar.widgets.data
 import android.content.Context
 import android.content.SharedPreferences
 import org.json.JSONArray
+import org.json.JSONObject
 
 /** Per-widget configuration. Add new fields here (with defaults) when new options are needed. */
 data class WidgetConfig(
@@ -17,6 +18,8 @@ data class WidgetConfig(
     val artColors: Boolean = true,
     /** Height multiplier for the music widget, 0.6..1.6. */
     val heightScale: Float = 1f,
+    /** Tap action per block of the battery widget: [TapAction.PHONE], a device address, or [TapAction.AUTO]. */
+    val tapActions: Map<String, TapAction> = emptyMap(),
 )
 
 object WidgetPrefs {
@@ -36,6 +39,13 @@ object WidgetPrefs {
         return listOfNotNull(sp.getString("${widgetId}_device", null))
     }
 
+    private fun readActions(sp: SharedPreferences, widgetId: Int): Map<String, TapAction> = try {
+        val o = JSONObject(sp.getString("${widgetId}_actions", "{}") ?: "{}")
+        o.keys().asSequence().associateWith { TapAction.fromJson(o.getJSONObject(it)) }
+    } catch (_: Throwable) {
+        emptyMap()
+    }
+
     fun load(context: Context, widgetId: Int, defaults: WidgetConfig = WidgetConfig()): WidgetConfig {
         val sp = sp(context)
         return WidgetConfig(
@@ -45,6 +55,7 @@ object WidgetPrefs {
             artRoundness = sp.getFloat("${widgetId}_art_roundness", defaults.artRoundness),
             artColors = sp.getBoolean("${widgetId}_art_colors", defaults.artColors),
             heightScale = sp.getFloat("${widgetId}_height_scale", defaults.heightScale),
+            tapActions = readActions(sp, widgetId),
         )
     }
 
@@ -55,6 +66,9 @@ object WidgetPrefs {
             .putFloat("${widgetId}_art_roundness", cfg.artRoundness)
             .putBoolean("${widgetId}_art_colors", cfg.artColors)
             .putFloat("${widgetId}_height_scale", cfg.heightScale)
+        val actions = JSONObject()
+        cfg.tapActions.filterValues { it.type != TapAction.Type.DEFAULT }.forEach { (k, v) -> actions.put(k, v.toJson()) }
+        e.putString("${widgetId}_actions", actions.toString())
         e.remove("${widgetId}_device")
         if (cfg.deviceAddresses.isEmpty()) e.remove("${widgetId}_devices")
         else e.putString("${widgetId}_devices", JSONArray(cfg.deviceAddresses).toString())
@@ -70,6 +84,7 @@ object WidgetPrefs {
             .remove("${widgetId}_art_roundness")
             .remove("${widgetId}_art_colors")
             .remove("${widgetId}_height_scale")
+            .remove("${widgetId}_actions")
             .apply()
     }
 }

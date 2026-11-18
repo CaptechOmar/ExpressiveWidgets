@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.captechomar.widgets.data.BatteryReader
 import com.captechomar.widgets.data.GadgetbridgeStore
+import com.captechomar.widgets.data.TapAction
 import com.captechomar.widgets.data.WidgetPrefs
 import com.captechomar.widgets.music.MediaAccess
 import com.captechomar.widgets.widgets.Palettes
@@ -183,6 +184,19 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
                     }
                 }
             }
+        }
+
+        if (kind.usesEarphones) {
+            val blocks = buildList {
+                add(TapBlock(TapAction.PHONE, "Phone"))
+                if (cfg.deviceAddresses.isEmpty()) add(TapBlock(TapAction.AUTO, "Automatic device"))
+                cfg.deviceAddresses.forEach { a ->
+                    val name = if (GadgetbridgeStore.isGbAddress(a)) GadgetbridgeStore.nameOf(a)
+                    else devices.firstOrNull { it.address == a }?.name ?: a
+                    add(TapBlock(a, name))
+                }
+            }
+            TapActionSection(blocks, cfg.tapActions) { key, action -> cfg = cfg.copy(tapActions = cfg.tapActions + (key to action)) }
         }
 
         if (kind.needsNotificationAccess && !notificationAccess) {
