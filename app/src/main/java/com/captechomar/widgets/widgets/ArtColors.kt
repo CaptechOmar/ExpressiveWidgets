@@ -169,8 +169,9 @@ object ArtColors {
         if (tonal) {
             val sh = if (shadow >= 0) hueSum[shadow] / count[shadow] else hueP
             bgHue = if (shadow >= 0 && hueDistance(sh, hueP) >= 25f) sh else hueP
+            if (bgHue in 170f..215f) bgHue += (215f - bgHue) * 0.6f
             bgSat = satP.coerceIn(0.65f, 0.95f)
-            bgVal = 0.22f
+            bgVal = 0.19f
         } else if (mode == Mode.DARK_BG && shadow >= 0) {
             bgHue = hueSum[shadow] / count[shadow]
             bgSat = (satSum[shadow] / count[shadow]).coerceIn(0.6f, 0.95f)
@@ -207,6 +208,15 @@ object ArtColors {
         var khakiHue = -1f
         var khakiSat = 0f
         var khakiVal = 0f
+        // size of the biggest candidate area: a red bonus only helps when there is no large accent area
+        var maxN = 0
+        for (i in 0 until FINE) {
+            val n = fCount[(i + FINE - 1) % FINE] + fCount[i] + fCount[(i + 1) % FINE]
+            if (n > maxN) {
+                val h = ((Math.toDegrees(atan2(fSin[i].toDouble(), fCos[i].toDouble())).toFloat()) + 360f) % 360f
+                if (fCount[i] > 0 && (hueDistance(h, bgHue) >= 25f || neutralDark)) maxN = n
+            }
+        }
         for (i in 0 until FINE) {
             val a = (i + FINE - 1) % FINE
             val b = (i + 1) % FINE
@@ -214,9 +224,9 @@ object ArtColors {
             if (n < total * 0.0025f) continue
             val sat = (fSat[a] + fSat[i] + fSat[b]) / n
             val vv = (fVal[a] + fVal[i] + fVal[b]) / n
-            val hue = ((Math.toDegrees(
-                atan2((fSin[a] + fSin[i] + fSin[b]).toDouble(), (fCos[a] + fCos[i] + fCos[b]).toDouble()),
-            ).toFloat()) + 360f) % 360f
+            // hue of the strongest 10 degree slice inside the window, so neighbours do not drag it sideways
+            val peak = if (fCount[a] >= fCount[i] && fCount[a] >= fCount[b]) a else if (fCount[b] > fCount[i]) b else i
+            val hue = ((Math.toDegrees(atan2(fSin[peak].toDouble(), fCos[peak].toDouble())).toFloat()) + 360f) % 360f
             val dist = hueDistance(hue, bgHue)
             if (dist < 25f && !neutralDark) continue
             // small areas only count when clearly vivid, or when they are far from the background hue
@@ -233,7 +243,7 @@ object ArtColors {
                 khakiSat = sat
                 khakiVal = vv
             }
-            val redBonus = if ((hue < 20f || hue > 340f) && vv >= 0.6f) 1.5f else 1f
+            val redBonus = if ((hue < 20f || hue > 340f) && vv >= 0.6f && maxN < total * 0.05f) 1.5f else 1f
             val score = sat * sat * vv * sqrt(n.toFloat()) * redBonus
             if (score > bestScore) {
                 bestScore = score
@@ -252,7 +262,7 @@ object ArtColors {
             accVal = warmVal.coerceIn(0.78f, 0.93f)
         }
         // a big yellow / khaki area (like a painted wall) beats a smaller, different accent
-        if (khakiHue >= 0f && khakiN / total >= bestShare && !(warmHue >= 0f && bestShare < 0.08f && bestSat < 0.75f)) {
+        if (khakiHue >= 0f && khakiN / total >= 0.04f && khakiN / total >= bestShare * 0.6f && !(warmHue >= 0f && bestShare < 0.08f && bestSat < 0.75f)) {
             bestScore = 1f
             accHue = khakiHue
             accSat = (khakiSat * 1.2f + 0.1f).coerceIn(0.45f, 0.85f)
