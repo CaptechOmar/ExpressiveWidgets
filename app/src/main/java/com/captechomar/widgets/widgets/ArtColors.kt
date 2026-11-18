@@ -107,6 +107,9 @@ object ArtColors {
             else -> Mode.MUTED
         }
 
+        // blue, green, purple covers: a deep tinted background with a vivid accent beats a flat rich background
+        val tonal = mode == Mode.VIVID && dark && !reddish && hueP !in 25f..70f
+
         fun hsvColor(h: Float, s: Float, v: Float) =
             Color.HSVToColor(floatArrayOf(h, s.coerceIn(0f, 1f), v.coerceIn(0f, 1f)))
 
@@ -133,7 +136,7 @@ object ArtColors {
             )
         }
 
-        if (mode == Mode.VIVID) {
+        if (mode == Mode.VIVID && !tonal) {
             // orange covers lean slightly toward red, which reads richer
             val hue = if (hueP < 45f) hueP * 0.7f else hueP
             val bgS = if (reddish) (satP + 0.4f).coerceIn(0.88f, 0.97f) else (satP + 0.12f).coerceIn(0.72f, 0.97f)
@@ -153,9 +156,9 @@ object ArtColors {
         }
 
         // ---- dark / mixed covers: dark background plus a vivid accent found elsewhere in the cover ----
-        val bgHue: Float
-        val bgSat: Float
-        val bgVal: Float
+        var bgHue: Float
+        var bgSat: Float
+        var bgVal: Float
         // darkest strongly colored area (e.g. a blue shirt in shadow) when the dark pixels themselves are neutral
         var shadow = -1
         for (i in 0 until BUCKETS) {
@@ -163,7 +166,12 @@ object ArtColors {
             if (satSum[i] / count[i] < 0.5f || valSum[i] / count[i] > 0.45f) continue
             if (shadow < 0 || count[i] > count[shadow]) shadow = i
         }
-        if (mode == Mode.DARK_BG && shadow >= 0) {
+        if (tonal) {
+            val sh = if (shadow >= 0) hueSum[shadow] / count[shadow] else hueP
+            bgHue = if (shadow >= 0 && hueDistance(sh, hueP) >= 25f) sh else hueP
+            bgSat = satP.coerceIn(0.65f, 0.95f)
+            bgVal = 0.22f
+        } else if (mode == Mode.DARK_BG && shadow >= 0) {
             bgHue = hueSum[shadow] / count[shadow]
             bgSat = (satSum[shadow] / count[shadow]).coerceIn(0.6f, 0.95f)
             bgVal = 0.24f
@@ -182,6 +190,8 @@ object ArtColors {
         }
 
         // accent: best vivid hue window (30 degrees wide) that differs from the background hue
+        // black covers with no strong shadow color: the accent decides the background hue instead
+        val neutralDark = mode == Mode.DARK_BG && shadow < 0 && darkCount >= total * 0.5f
         var accHue = bgHue
         var accSat = 0.15f
         var accVal = 0.9f
@@ -193,6 +203,10 @@ object ArtColors {
         var warmSat = 0f
         var warmVal = 0f
         var warmN = 0f
+        var khakiN = 0f
+        var khakiHue = -1f
+        var khakiSat = 0f
+        var khakiVal = 0f
         for (i in 0 until FINE) {
             val a = (i + FINE - 1) % FINE
             val b = (i + 1) % FINE
@@ -204,7 +218,7 @@ object ArtColors {
                 atan2((fSin[a] + fSin[i] + fSin[b]).toDouble(), (fCos[a] + fCos[i] + fCos[b]).toDouble()),
             ).toFloat()) + 360f) % 360f
             val dist = hueDistance(hue, bgHue)
-            if (dist < 45f) continue
+            if (dist < 25f && !neutralDark) continue
             // small areas only count when clearly vivid, or when they are far from the background hue
             if (n < total * 0.015f && sat < 0.5f && !(dist >= 90f && n >= total * 0.007f)) continue
             if (hue in 38f..75f && vv >= 0.65f && n >= total * 0.012f && n > warmN) {
@@ -213,14 +227,22 @@ object ArtColors {
                 warmSat = sat
                 warmVal = vv
             }
-            val score = sat * sat * vv * sqrt(n.toFloat())
+            if (hue in 50f..75f && sat >= 0.4f && vv >= 0.6f && n > khakiN) {
+                khakiN = n.toFloat()
+                khakiHue = hue
+                khakiSat = sat
+                khakiVal = vv
+            }
+            val redBonus = if ((hue < 20f || hue > 340f) && vv >= 0.6f) 1.5f else 1f
+            val score = sat * sat * vv * sqrt(n.toFloat()) * redBonus
             if (score > bestScore) {
                 bestScore = score
                 bestShare = n.toFloat() / total
                 accHue = hue
-                accSat = (sat * 1.2f + 0.1f).coerceIn(0.45f, 0.95f)
+                accSat = (sat * 1.25f + 0.1f).coerceIn(0.45f, 1f)
                 bestSat = sat
-                accVal = vv.coerceIn(0.78f, 0.93f)
+                // strongly saturated accents are lifted so they do not look muted on a dark background
+                accVal = if (sat >= 0.7f) (vv + 0.12f).coerceIn(0.88f, 0.98f) else vv.coerceIn(0.78f, 0.93f)
             }
         }
         if (warmHue >= 0f && bestShare < 0.08f && bestSat < 0.75f) {
@@ -229,7 +251,26 @@ object ArtColors {
             accSat = (warmSat * 1.2f + 0.1f).coerceIn(0.45f, 0.95f)
             accVal = warmVal.coerceIn(0.78f, 0.93f)
         }
-        if (bestScore == 0f) {
+        // a big yellow / khaki area (like a painted wall) beats a smaller, different accent
+        if (khakiHue >= 0f && khakiN / total >= bestShare && !(warmHue >= 0f && bestShare < 0.08f && bestSat < 0.75f)) {
+            bestScore = 1f
+            accHue = khakiHue
+            accSat = (khakiSat * 1.2f + 0.1f).coerceIn(0.45f, 0.85f)
+            accVal = khakiVal.coerceIn(0.78f, 0.93f)
+        }
+        if (neutralDark && bestScore > 0f && accSat >= 0.7f) {
+            bgHue = (accHue + 348f) % 360f
+            bgSat = 0.88f
+            bgVal = 0.38f
+        }
+        if (tonal && bestScore == 0f) {
+            // single-color cover: lift the background a little and use a pale tint for the buttons
+            bgVal = 0.38f
+            accHue = bgHue
+            accSat = 0.25f
+            accVal = 0.9f
+        }
+        if (bestScore == 0f && !tonal) {
             accSat = 0.15f
             accVal = 0.9f
             accHue = bgHue
