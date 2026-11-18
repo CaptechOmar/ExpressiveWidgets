@@ -11,6 +11,8 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.service.notification.NotificationListenerService
+import android.service.notification.StatusBarNotification
+import com.captechomar.widgets.data.GadgetbridgeStore
 import com.captechomar.widgets.widgets.MusicKind
 import com.captechomar.widgets.widgets.WidgetUpdater
 
@@ -37,7 +39,27 @@ class MediaListenerService : NotificationListenerService() {
         track(controllers.orEmpty())
     }
 
+    // ---- Gadgetbridge: its connection notification carries each device's battery level ----
+
+    override fun onNotificationPosted(sbn: StatusBarNotification?) {
+        GadgetbridgeStore.onPosted(this, sbn)
+    }
+
+    override fun onNotificationRemoved(
+        sbn: StatusBarNotification?,
+        rankingMap: NotificationListenerService.RankingMap?,
+        reason: Int,
+    ) {
+        // swiping the notification away or tapping it does not mean the device went away
+        if (reason == NotificationListenerService.REASON_CANCEL || reason == NotificationListenerService.REASON_CLICK) return
+        GadgetbridgeStore.onRemoved(this, sbn)
+    }
+
     override fun onListenerConnected() {
+        try {
+            GadgetbridgeStore.rescan(this, activeNotifications)
+        } catch (_: Throwable) {
+        }
         val m = getSystemService(MediaSessionManager::class.java) ?: return
         manager = m
         val component = ComponentName(this, MediaListenerService::class.java)

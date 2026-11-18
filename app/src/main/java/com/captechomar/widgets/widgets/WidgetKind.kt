@@ -46,7 +46,7 @@ internal fun openAppIntent(context: Context, requestCode: Int): PendingIntent =
 object BatteryKind : WidgetKind {
     override val providerClass: Class<*> = BatteryWidgetProvider::class.java
     override val title = "Batteries"
-    override val description = "Phone and Bluetooth earphones battery on your home screen."
+    override val description = "Phone battery, plus Bluetooth earphones or a Gadgetbridge device."
     override val layoutRes = R.layout.widget_image
     override val usesEarphones = true
 

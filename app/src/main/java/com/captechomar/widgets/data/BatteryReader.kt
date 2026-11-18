@@ -55,13 +55,24 @@ object BatteryReader {
             adapter.bondedDevices.orEmpty()
                 .filter { isConnected(it) }
                 .map { it.toBattery(context, level = readLevel(context, it)) }
+                // a device that Gadgetbridge manages usually has no level in the system, but Gadgetbridge knows it
+                .map { if (it.percent < 0) it.copy(percent = GadgetbridgeStore.levelFor(context, it.name)) else it }
         } catch (_: Exception) {
             emptyList()
         }
     }
 
-    /** Picks the earphones to show: the chosen device if connected, otherwise the best connected audio device. */
+    /**
+     * Picks the device to show next to the phone: the chosen one if it is connected, otherwise the best
+     * connected audio device. Returns null when nothing is connected, and the widget then shows the phone alone.
+     */
     fun earphones(context: Context, preferredAddress: String?): BtBattery? {
+        // a device picked from Gadgetbridge's devices
+        if (preferredAddress != null && GadgetbridgeStore.isGbAddress(preferredAddress)) {
+            val name = GadgetbridgeStore.nameOf(preferredAddress)
+            return GadgetbridgeStore.current(context).firstOrNull { it.name == name }
+                ?.let { BtBattery(it.name, preferredAddress, it.percent, isAudio = false) }
+        }
         val connected = connectedDevices(context)
         if (preferredAddress != null) return connected.firstOrNull { it.address == preferredAddress }
         return connected.firstOrNull { it.isAudio && it.percent >= 0 }

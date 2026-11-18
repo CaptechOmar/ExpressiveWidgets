@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Expressive Widgets</string>
     <string name="widget_batteries_name">Batteries</string>
-    <string name="widget_batteries_desc">Phone and Bluetooth earphones battery</string>
+    <string name="widget_batteries_desc">Phone battery, plus Bluetooth earphones or a Gadgetbridge device</string>
     <string name="widget_music_name">Music</string>
     <string name="widget_music_desc">Album art with play, previous and next controls</string>
     <string name="music_play_pause">Play or pause</string>
