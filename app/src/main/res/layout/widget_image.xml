@@ -15,31 +15,31 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="horizontal">
-        <View
+        <ImageView
             android:id="@+id/block0"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:visibility="gone" />
-        <View
+        <ImageView
             android:id="@+id/block1"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:visibility="gone" />
-        <View
+        <ImageView
             android:id="@+id/block2"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:visibility="gone" />
-        <View
+        <ImageView
             android:id="@+id/block3"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:visibility="gone" />
-        <View
+        <ImageView
             android:id="@+id/block4"
             android:layout_width="0dp"
             android:layout_height="match_parent"
