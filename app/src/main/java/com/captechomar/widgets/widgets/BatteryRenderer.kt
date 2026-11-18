@@ -11,7 +11,7 @@ import androidx.core.content.ContextCompat
 import com.captechomar.widgets.R
 import com.captechomar.widgets.data.BatteryReader
 import com.captechomar.widgets.data.BtBattery
-import com.captechomar.widgets.data.GadgetbridgeStore
+import com.captechomar.widgets.data.DeviceKind
 import com.captechomar.widgets.data.PhoneBattery
 import com.captechomar.widgets.data.WidgetConfig
 import kotlin.math.max
@@ -59,9 +59,11 @@ object BatteryRenderer {
             percent = phone.percent, icon = R.drawable.ic_phone, charging = phone.charging,
         )
         others.forEachIndexed { i, device ->
-            val icon = when {
-                GadgetbridgeStore.isGbAddress(device.address) -> R.drawable.ic_watch
-                else -> R.drawable.ic_headphones
+            val icon = when (device.kind) {
+                DeviceKind.WATCH -> R.drawable.ic_watch
+                DeviceKind.EARBUDS -> R.drawable.ic_earbuds
+                DeviceKind.HEADPHONES -> R.drawable.ic_headphones
+                DeviceKind.OTHER -> R.drawable.ic_bluetooth
             }
             val left = pad + (i + 1) * (trackW + gap)
             drawBar(

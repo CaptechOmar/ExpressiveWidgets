@@ -15,7 +15,25 @@ import android.os.Build
 data class PhoneBattery(val percent: Int, val charging: Boolean)
 
 /** [percent] is -1 when the device is connected but doesn't report a battery level. */
-data class BtBattery(val name: String, val address: String, val percent: Int, val isAudio: Boolean)
+/** Decides which icon a device gets in the battery widget. */
+enum class DeviceKind {
+    WATCH, EARBUDS, HEADPHONES, OTHER;
+
+    companion object {
+        private val earbuds = Regex("""(?i)buds|pods|earbuds|\bear\b|airdots|freebuds""")
+
+        /** Guesses from the device name, or null when the name says nothing. */
+        fun fromName(name: String): DeviceKind? = if (earbuds.containsMatchIn(name)) EARBUDS else null
+    }
+}
+
+data class BtBattery(
+    val name: String,
+    val address: String,
+    val percent: Int,
+    val isAudio: Boolean,
+    val kind: DeviceKind = DeviceKind.OTHER,
+)
 
 object BatteryReader {
 
@@ -76,7 +94,7 @@ object BatteryReader {
         return addresses.mapNotNull { address ->
             if (GadgetbridgeStore.isGbAddress(address)) {
                 val name = GadgetbridgeStore.nameOf(address)
-                gadgetbridge.firstOrNull { it.name == name }?.let { BtBattery(it.name, address, it.percent, isAudio = false) }
+                gadgetbridge.firstOrNull { it.name == name }?.let { BtBattery(it.name, address, it.percent, isAudio = false, kind = DeviceKind.fromName(it.name) ?: DeviceKind.WATCH) }
             } else {
                 connected.firstOrNull { it.address == address }
             }
@@ -92,7 +110,7 @@ object BatteryReader {
         if (preferredAddress != null && GadgetbridgeStore.isGbAddress(preferredAddress)) {
             val name = GadgetbridgeStore.nameOf(preferredAddress)
             return GadgetbridgeStore.current(context).firstOrNull { it.name == name }
-                ?.let { BtBattery(it.name, preferredAddress, it.percent, isAudio = false) }
+                ?.let { BtBattery(it.name, preferredAddress, it.percent, isAudio = false, kind = DeviceKind.fromName(it.name) ?: DeviceKind.WATCH) }
         }
         val connected = connectedDevices(context)
         if (preferredAddress != null) return connected.firstOrNull { it.address == preferredAddress }
@@ -142,6 +160,14 @@ object BatteryReader {
             false
         }
         val label = try { name } catch (_: Throwable) { null }
-        return BtBattery(label ?: address, address, level, audio)
+        val cls = try { bluetoothClass } catch (_: Throwable) { null }
+        val kind = when {
+            cls?.deviceClass == BluetoothClass.Device.WEARABLE_WRIST_WATCH -> DeviceKind.WATCH
+            label != null && DeviceKind.fromName(label) != null -> DeviceKind.EARBUDS
+            audio -> DeviceKind.HEADPHONES
+            cls?.majorDeviceClass == BluetoothClass.Device.Major.WEARABLE -> DeviceKind.WATCH
+            else -> DeviceKind.OTHER
+        }
+        return BtBattery(label ?: address, address, level, audio, kind)
     }
 }
