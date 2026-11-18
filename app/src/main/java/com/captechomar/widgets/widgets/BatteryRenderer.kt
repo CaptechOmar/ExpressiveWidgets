@@ -62,7 +62,7 @@ object BatteryRenderer {
             val icon = when (device.kind) {
                 DeviceKind.WATCH -> R.drawable.ic_watch
                 DeviceKind.EARBUDS -> R.drawable.ic_earbuds
-                DeviceKind.HEADPHONES -> R.drawable.ic_headphones
+                DeviceKind.HEADPHONES -> R.drawable.ic_earbuds
                 DeviceKind.OTHER -> R.drawable.ic_bluetooth
             }
             val left = pad + (i + 1) * (trackW + gap)
