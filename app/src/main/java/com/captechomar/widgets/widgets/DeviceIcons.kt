@@ -45,6 +45,9 @@ object DeviceIcons {
         when {
             key == TapAction.PHONE -> "phone_dots_side"
             kind == DeviceKind.WATCH -> "watch"
+            kind == DeviceKind.EARBUD_LEFT -> "earbud_left"
+            kind == DeviceKind.EARBUD_RIGHT -> "earbud_right"
+            kind == DeviceKind.EARBUD_CASE -> "earbud_case"
             kind == DeviceKind.EARBUDS || kind == DeviceKind.HEADPHONES -> "airpods"
             else -> "bluetooth"
         },

@@ -168,11 +168,19 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
             GadgetbridgeStore.known(context).forEach {
                 entries += DeviceEntry(GadgetbridgeStore.addressOf(it), it, DeviceKind.fromName(it) ?: DeviceKind.WATCH)
             }
-            OpenScq30Store.known(context).forEach {
-                entries += DeviceEntry(OpenScq30Store.addressOf(it), it, DeviceKind.fromName(it) ?: DeviceKind.EARBUDS)
+            OpenScq30Store.entries(context).forEach {
+                entries += DeviceEntry(
+                    it.address, it.label,
+                    when (it.part) {
+                        OpenScq30Store.Part.LEFT -> DeviceKind.EARBUD_LEFT
+                        OpenScq30Store.Part.RIGHT -> DeviceKind.EARBUD_RIGHT
+                        OpenScq30Store.Part.CASE -> DeviceKind.EARBUD_CASE
+                        OpenScq30Store.Part.ALL -> DeviceKind.fromName(it.label) ?: DeviceKind.EARBUDS
+                    },
+                )
             }
             cfg.deviceAddresses.filter { a -> entries.none { it.key == a } }.forEach { a ->
-                entries += DeviceEntry(a, if (GadgetbridgeStore.isGbAddress(a)) GadgetbridgeStore.nameOf(a) else if (OpenScq30Store.isAddress(a)) OpenScq30Store.nameOf(a) else a, DeviceKind.OTHER)
+                entries += DeviceEntry(a, if (GadgetbridgeStore.isGbAddress(a)) GadgetbridgeStore.nameOf(a) else if (OpenScq30Store.isAddress(a)) OpenScq30Store.labelOf(a) else a, DeviceKind.OTHER)
             }
             DeviceList(cfg, entries, autoPick) { cfg = it }
         }

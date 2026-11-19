@@ -17,7 +17,7 @@ data class PhoneBattery(val percent: Int, val charging: Boolean)
 /** [percent] is -1 when the device is connected but doesn't report a battery level. */
 /** Decides which icon a device gets in the battery widget. */
 enum class DeviceKind {
-    WATCH, EARBUDS, HEADPHONES, OTHER;
+    WATCH, EARBUDS, HEADPHONES, EARBUD_LEFT, EARBUD_RIGHT, EARBUD_CASE, OTHER;
 
     companion object {
         private val earbuds = Regex("""(?i)buds|pods|earbuds|\bear\b|airdots|freebuds""")
@@ -93,9 +93,17 @@ object BatteryReader {
         val gadgetbridge = GadgetbridgeStore.current(context)
         return addresses.mapNotNull { address ->
             if (OpenScq30Store.isAddress(address)) {
-                val name = OpenScq30Store.nameOf(address)
-                OpenScq30Store.current(context)?.takeIf { it.name == name }
-                    ?.let { BtBattery(it.name, address, it.percent, isAudio = true, kind = DeviceKind.fromName(it.name) ?: DeviceKind.EARBUDS) }
+                val (name, part) = OpenScq30Store.split(address)
+                val level = OpenScq30Store.levelFor(context, name, part)
+                if (level < 0) null else BtBattery(
+                    OpenScq30Store.labelOf(address), address, level, isAudio = true,
+                    kind = when (part) {
+                        OpenScq30Store.Part.LEFT -> DeviceKind.EARBUD_LEFT
+                        OpenScq30Store.Part.RIGHT -> DeviceKind.EARBUD_RIGHT
+                        OpenScq30Store.Part.CASE -> DeviceKind.EARBUD_CASE
+                        OpenScq30Store.Part.ALL -> DeviceKind.fromName(name) ?: DeviceKind.EARBUDS
+                    },
+                )
             } else if (GadgetbridgeStore.isGbAddress(address)) {
                 val name = GadgetbridgeStore.nameOf(address)
                 gadgetbridge.firstOrNull { it.name == name }?.let { BtBattery(it.name, address, it.percent, isAudio = false, kind = DeviceKind.fromName(it.name) ?: DeviceKind.WATCH) }

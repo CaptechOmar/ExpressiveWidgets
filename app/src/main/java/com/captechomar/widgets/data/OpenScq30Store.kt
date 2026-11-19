@@ -21,22 +21,67 @@ object OpenScq30Store {
     private fun sp(context: Context) =
         context.applicationContext.getSharedPreferences("openscq30", Context.MODE_PRIVATE)
 
-    fun addressOf(name: String) = ADDRESS_PREFIX + name
+    /** Which battery of the device a block shows: the whole device, or one earbud, or the case. */
+    enum class Part(val suffix: String, val label: String) {
+        ALL("", ""), LEFT("|L", " (Left)"), RIGHT("|R", " (Right)"), CASE("|C", " (Case)")
+    }
+
+    /** An entry for the settings list. */
+    data class Entry(val address: String, val label: String, val part: Part)
+
+    fun addressOf(name: String, part: Part = Part.ALL) = ADDRESS_PREFIX + name + part.suffix
     fun isAddress(address: String?) = address?.startsWith(ADDRESS_PREFIX) == true
-    fun nameOf(address: String) = address.removePrefix(ADDRESS_PREFIX)
+
+    fun split(address: String): Pair<String, Part> {
+        val body = address.removePrefix(ADDRESS_PREFIX)
+        val part = Part.values().firstOrNull { it != Part.ALL && body.endsWith(it.suffix) } ?: Part.ALL
+        return body.removeSuffix(part.suffix) to part
+    }
+
+    fun nameOf(address: String) = split(address).first
+
+    /** Name for an address in the settings list, e.g. "Soundcore P30i (Left)". */
+    fun labelOf(address: String): String {
+        val (name, part) = split(address)
+        return name + part.label
+    }
 
     fun current(context: Context): ScqDevice? {
         val name = sp(context).getString("name", null) ?: return null
         val level = sp(context).getInt("percent", -1)
-        return if (level in 0..100) ScqDevice(name, level) else null
+        if (level !in 0..100) return null
+        return ScqDevice(
+            name, level,
+            left = sp(context).getInt("left", -1), right = sp(context).getInt("right", -1),
+            case = sp(context).getInt("case", -1), single = sp(context).getInt("single", -1),
+        )
     }
 
-    /** Every device name seen so far, so it can be picked in the settings while disconnected. */
-    fun known(context: Context): List<String> =
-        sp(context).getStringSet("known", emptySet()).orEmpty().sorted()
+    /** The level for one block, or -1 when the device isn't connected or doesn't report that battery. */
+    fun levelFor(context: Context, name: String, part: Part = Part.ALL): Int {
+        val d = current(context)?.takeIf { it.name == name } ?: return -1
+        return when (part) {
+            Part.ALL -> d.percent
+            Part.LEFT -> d.left
+            Part.RIGHT -> d.right
+            Part.CASE -> d.case
+        }
+    }
 
-    fun levelFor(context: Context, name: String): Int =
-        current(context)?.takeIf { it.name == name }?.percent ?: -1
+    /**
+     * Everything that can be picked in the settings, also while the device is switched off. A device that reports
+     * separate earbuds is offered as left, right (and case) instead of one combined block.
+     */
+    fun entries(context: Context): List<Entry> {
+        val seen = sp(context).getStringSet("known", emptySet()).orEmpty()
+        val out = ArrayList<Entry>()
+        for (base in seen.filter { !it.contains('|') }.sorted()) {
+            val parts = Part.values().filter { it != Part.ALL && (base + it.suffix) in seen }
+            if (parts.isEmpty()) out += Entry(addressOf(base), base, Part.ALL)
+            else parts.forEach { out += Entry(addressOf(base, it), base + it.label, it) }
+        }
+        return out
+    }
 
     fun isConnectionNotification(sbn: StatusBarNotification?): Boolean {
         if (sbn == null || !sbn.packageName.startsWith(PACKAGE_PREFIX)) return false
@@ -70,10 +115,18 @@ object OpenScq30Store {
     private fun publish(context: Context, device: ScqDevice?) {
         val before = current(context)
         val e = sp(context).edit()
-        if (device == null) e.remove("name").remove("percent")
+        if (device == null) e.remove("name").remove("percent").remove("left").remove("right").remove("case").remove("single")
         else {
+            val seen = ArrayList<String>().apply {
+                add(device.name)
+                if (device.left >= 0) add(device.name + Part.LEFT.suffix)
+                if (device.right >= 0) add(device.name + Part.RIGHT.suffix)
+                if (device.case >= 0) add(device.name + Part.CASE.suffix)
+            }
             e.putString("name", device.name).putInt("percent", device.percent)
-                .putStringSet("known", sp(context).getStringSet("known", emptySet()).orEmpty() + device.name)
+                .putInt("left", device.left).putInt("right", device.right)
+                .putInt("case", device.case).putInt("single", device.single)
+                .putStringSet("known", sp(context).getStringSet("known", emptySet()).orEmpty() + seen)
         }
         e.apply()
         if (before != device) WidgetUpdater.updateKind(context, BatteryKind)
