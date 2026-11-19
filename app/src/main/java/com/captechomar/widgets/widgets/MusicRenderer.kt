@@ -12,6 +12,7 @@ import androidx.annotation.DrawableRes
 import androidx.core.content.ContextCompat
 import com.captechomar.widgets.R
 import com.captechomar.widgets.data.WidgetConfig
+import com.captechomar.widgets.music.ArtFallback
 import com.captechomar.widgets.music.MusicState
 import com.captechomar.widgets.music.MusicStore
 import kotlin.math.max
@@ -35,7 +36,7 @@ object MusicRenderer {
     ): Bitmap {
         val bmp = Bitmap.createBitmap(max(w, 1), max(h, 1), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
-        val art = state?.art
+        val art = state?.art ?: ArtFallback.load(context, cfg.noArtMode)
         val col = if (cfg.artColors && art != null) ArtColors.fromArt(art, Palettes.isDark(context))
         else Palettes.resolve(context, cfg.palette)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)

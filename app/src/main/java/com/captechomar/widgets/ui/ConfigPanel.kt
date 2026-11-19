@@ -72,7 +72,8 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
         notificationAccess = MediaAccess.isEnabled(context)
     }
 
-    val preview = remember(cfg, hasPermission, notificationAccess) { kind.render(context, cfg, 900, 230) }
+    var artVersion by remember { mutableStateOf(0) }
+    val preview = remember(cfg, hasPermission, notificationAccess, artVersion) { kind.render(context, cfg, 900, 230) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Image(
@@ -102,6 +103,10 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
                 Text("Colors from album art", style = MaterialTheme.typography.titleMedium)
                 Switch(checked = cfg.artColors, onCheckedChange = { cfg = cfg.copy(artColors = it) })
             }
+        }
+
+        if (kind.supportsArt) {
+            NoArtSection(cfg.noArtMode, onMode = { cfg = cfg.copy(noArtMode = it) }, onChanged = { artVersion++ })
         }
 
         // Shape settings are whole numbers so the same shape can be typed in on another widget.
@@ -191,9 +196,19 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
     }
 }
 
-/** A slider with an editable whole-number value next to its label. */
+/** A slider with its current whole-number value shown next to the label. */
 @Composable
 private fun NumberSlider(label: String, value: Int, range: IntRange, onChange: (Int) -> Unit) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(label, style = MaterialTheme.typography.titleMedium)
+            Text(value.toString(), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+        }
+        Slider(label: String, value: Int, range: IntRange, onChange: (Int) -> Unit) {
     // reset the text whenever the slider moves the value
     var text by remember(value) { mutableStateOf(value.toString()) }
 

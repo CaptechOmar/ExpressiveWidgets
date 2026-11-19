@@ -22,6 +22,8 @@ data class WidgetConfig(
     /** Height multiplier for the music widget, 0.6..1.6. */
     val heightScale: Float = 1f,
     /** Tap action per block of the battery widget: [TapAction.PHONE], a device address, or [TapAction.AUTO]. */
+    /** What the music widget shows when there is no album art: "icon", "wallpaper" or "picture". */
+    val noArtMode: String = "icon",
     val tapActions: Map<String, TapAction> = emptyMap(),
     /** True once the devices were picked by hand. Until then an empty list means the automatic pick. */
     val manualDevices: Boolean = false,
@@ -81,6 +83,7 @@ object WidgetPrefs {
             artRoundness = sp.getFloat("${widgetId}_art_roundness", defaults.artRoundness),
             artColors = sp.getBoolean("${widgetId}_art_colors", defaults.artColors),
             heightScale = sp.getFloat("${widgetId}_height_scale", defaults.heightScale),
+            noArtMode = sp.getString("${widgetId}_no_art", defaults.noArtMode) ?: defaults.noArtMode,
             tapActions = readActions(sp, widgetId),
             manualDevices = sp.getBoolean("${widgetId}_manual", false),
             deviceOrder = readList(sp, "${widgetId}_order"),
@@ -95,6 +98,7 @@ object WidgetPrefs {
             .putFloat("${widgetId}_art_roundness", cfg.artRoundness)
             .putBoolean("${widgetId}_art_colors", cfg.artColors)
             .putFloat("${widgetId}_height_scale", cfg.heightScale)
+            .putString("${widgetId}_no_art", cfg.noArtMode)
         val actions = JSONObject()
         cfg.tapActions.filterValues { it.type != TapAction.Type.DEFAULT }.forEach { (k, v) -> actions.put(k, v.toJson()) }
         e.putString("${widgetId}_actions", actions.toString())
@@ -118,6 +122,7 @@ object WidgetPrefs {
             .remove("${widgetId}_art_roundness")
             .remove("${widgetId}_art_colors")
             .remove("${widgetId}_height_scale")
+            .remove("${widgetId}_no_art")
             .remove("${widgetId}_actions")
             .remove("${widgetId}_manual")
             .remove("${widgetId}_order")
