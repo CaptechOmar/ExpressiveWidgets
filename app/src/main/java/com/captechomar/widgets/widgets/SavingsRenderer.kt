@@ -230,6 +230,7 @@ object SavingsRenderer {
                 if (p.hasGlyph(emoji)) {
                     // drawn glyphs, not a filter: the emoji keeps its detail in the text colour
                     p.color = color
+                    p.textAlign = Paint.Align.LEFT
                     val b = android.graphics.Rect()
                     p.getTextBounds(emoji, 0, emoji.length, b)
                     canvas.drawText(emoji, tile.centerX() - (b.left + b.right) / 2f + 0f, tile.centerY() - (b.top + b.bottom) / 2f, p)

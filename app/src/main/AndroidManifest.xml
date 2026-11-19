@@ -81,7 +81,7 @@
             android:exported="false"
             android:excludeFromRecents="true"
             android:taskAffinity=""
-            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+            android:theme="@style/Theme.ExpressiveWidgets.Overlay" />
 
         <receiver
             android:name=".widgets.MediaActionReceiver"
