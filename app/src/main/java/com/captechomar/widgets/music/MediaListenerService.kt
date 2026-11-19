@@ -55,7 +55,7 @@ class MediaListenerService : NotificationListenerService() {
         // swiping the notification away or tapping it does not mean the device went away
         if (reason == NotificationListenerService.REASON_CANCEL || reason == NotificationListenerService.REASON_CLICK) return
         GadgetbridgeStore.onRemoved(this, sbn)
-        OpenScq30Store.onRemoved(this, sbn)
+        OpenScq30Store.onRemoved(this, sbn, try { activeNotifications } catch (_: Throwable) { null })
     }
 
     override fun onListenerConnected() {

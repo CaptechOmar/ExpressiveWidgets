@@ -99,30 +99,54 @@ object OpenScq30Store {
 
     private fun storedKey(context: Context) = sp(context).getString("key", null)
 
+    /** Short log of what happened, newest last, shown in the settings to help find problems. */
+    private fun log(context: Context, line: String) {
+        val old = sp(context).getString("log", "").orEmpty().split("\n").filter { it.isNotBlank() }
+        sp(context).edit().putString("log", (old + line).takeLast(4).joinToString("\n")).apply()
+    }
+
     fun onPosted(context: Context, sbn: StatusBarNotification?) {
         if (sbn == null || !fromApp(sbn)) return
-        remember(context, sbn)
-        // whichever notification of the app carries a battery level is the connection one
-        val device = parse(sbn)
-        if (device != null) {
-            sp(context).edit().putString("key", sbn.key).apply()
-            publish(context, device)
-        } else if (sbn.key == storedKey(context) || isConnectionNotification(sbn)) {
-            publish(context, null)
+        try {
+            remember(context, sbn)
+            // whichever notification of the app carries a battery level is the connection one
+            val device = parse(sbn)
+            log(context, "posted: " + (device?.let { "read ${it.name} ${it.percent}%" } ?: "no level found"))
+            if (device != null) {
+                sp(context).edit().putString("key", sbn.key).apply()
+                publish(context, device)
+            } else if (sbn.key == storedKey(context) || isConnectionNotification(sbn)) {
+                publish(context, null)
+            }
+        } catch (t: Throwable) {
+            log(context, "error: ${t.javaClass.simpleName} ${t.message}")
         }
     }
 
-    fun onRemoved(context: Context, sbn: StatusBarNotification?) {
+    /** [active] is what the listener still sees: a removal followed by a re-post must not clear the device. */
+    fun onRemoved(context: Context, sbn: StatusBarNotification?, active: Array<StatusBarNotification>? = null) {
         if (sbn == null || !fromApp(sbn)) return
-        if (sbn.key == storedKey(context) || isConnectionNotification(sbn)) publish(context, null)
+        try {
+            if (!(sbn.key == storedKey(context) || isConnectionNotification(sbn))) return
+            val stillThere = active.orEmpty().firstNotNullOfOrNull { n -> if (fromApp(n)) parse(n) else null }
+            log(context, "removed: " + if (stillThere != null) "still shown, kept" else "cleared")
+            publish(context, stillThere)
+        } catch (t: Throwable) {
+            log(context, "error: ${t.javaClass.simpleName} ${t.message}")
+        }
     }
 
     fun rescan(context: Context, active: Array<StatusBarNotification>?) {
-        val mine = active.orEmpty().filter { fromApp(it) }
-        mine.forEach { remember(context, it) }
-        val found = mine.firstNotNullOfOrNull { n -> parse(n)?.let { n to it } }
-        if (found != null) sp(context).edit().putString("key", found.first.key).apply()
-        publish(context, found?.second)
+        try {
+            val mine = active.orEmpty().filter { fromApp(it) }
+            mine.forEach { remember(context, it) }
+            val found = mine.firstNotNullOfOrNull { n -> parse(n)?.let { n to it } }
+            log(context, "scan: " + (found?.second?.let { "read ${it.name} ${it.percent}%" } ?: "nothing"))
+            if (found != null) sp(context).edit().putString("key", found.first.key).apply()
+            publish(context, found?.second)
+        } catch (t: Throwable) {
+            log(context, "error: ${t.javaClass.simpleName} ${t.message}")
+        }
     }
 
     /** For the settings screen: what the listener last saw from OpenSCQ30, to help when no level shows up. */
@@ -146,7 +170,8 @@ object OpenScq30Store {
         val device = current(context)
         return when {
             device != null -> "OpenSCQ30: reading ${device.name} (${device.percent}%)"
-            seen != null -> "OpenSCQ30 notification seen but no battery level found: $seen"
+            seen != null -> "OpenSCQ30 notification seen but no battery level stored: $seen\n" +
+                sp(context).getString("log", "").orEmpty()
             listener == 0L -> "OpenSCQ30: this app's notification listener hasn't started yet. Turn notification access off and on again for this app."
             else -> "OpenSCQ30: no notification seen yet. Connect your earbuds in OpenSCQ30."
         }
