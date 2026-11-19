@@ -83,10 +83,10 @@ object OpenScq30Store {
         return out
     }
 
-    fun isConnectionNotification(sbn: StatusBarNotification?): Boolean {
-        if (sbn == null || !sbn.packageName.startsWith(PACKAGE_PREFIX)) return false
-        return sbn.notification?.channelId == CHANNEL_ID || sbn.id == NOTIFICATION_ID
-    }
+    private fun fromApp(sbn: StatusBarNotification?) = sbn != null && sbn.packageName.startsWith(PACKAGE_PREFIX)
+
+    fun isConnectionNotification(sbn: StatusBarNotification?): Boolean =
+        fromApp(sbn) && (sbn!!.notification?.channelId == CHANNEL_ID || sbn.id == NOTIFICATION_ID || sbn.isOngoing)
 
     private fun parse(sbn: StatusBarNotification): ScqDevice? {
         val e = sbn.notification.extras
@@ -98,7 +98,9 @@ object OpenScq30Store {
     }
 
     fun onPosted(context: Context, sbn: StatusBarNotification?) {
-        if (sbn == null || !isConnectionNotification(sbn)) return
+        if (sbn == null || !fromApp(sbn)) return
+        remember(context, sbn)
+        if (!isConnectionNotification(sbn)) return
         publish(context, parse(sbn))
     }
 
@@ -109,7 +111,34 @@ object OpenScq30Store {
 
     fun rescan(context: Context, active: Array<StatusBarNotification>?) {
         val sbn = active.orEmpty().firstOrNull { isConnectionNotification(it) }
+        sbn?.let { remember(context, it) }
         publish(context, sbn?.let { parse(it) })
+    }
+
+    /** For the settings screen: what the listener last saw from OpenSCQ30, to help when no level shows up. */
+    private fun remember(context: Context, sbn: StatusBarNotification) {
+        val e = sbn.notification.extras
+        val title = e.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
+        val text = (e.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: e.getCharSequence(Notification.EXTRA_TEXT))
+            ?.toString().orEmpty().replace('\n', ' ')
+        sp(context).edit().putString("last_seen", "$title | $text".take(160)).apply()
+    }
+
+    fun markListenerConnected(context: Context) {
+        sp(context).edit().putLong("listener_at", System.currentTimeMillis()).apply()
+    }
+
+    /** One line describing what was seen, shown in the device settings. */
+    fun status(context: Context): String {
+        val listener = sp(context).getLong("listener_at", 0L)
+        val seen = sp(context).getString("last_seen", null)
+        val device = current(context)
+        return when {
+            device != null -> "OpenSCQ30: reading ${device.name} (${device.percent}%)"
+            seen != null -> "OpenSCQ30 notification seen but no battery level found: $seen"
+            listener == 0L -> "OpenSCQ30: this app's notification listener hasn't started yet. Turn notification access off and on again for this app."
+            else -> "OpenSCQ30: no notification seen yet. Connect your earbuds in OpenSCQ30."
+        }
     }
 
     private fun publish(context: Context, device: ScqDevice?) {

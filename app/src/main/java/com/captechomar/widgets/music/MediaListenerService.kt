@@ -59,6 +59,7 @@ class MediaListenerService : NotificationListenerService() {
     }
 
     override fun onListenerConnected() {
+        OpenScq30Store.markListenerConnected(this)
         try {
             GadgetbridgeStore.rescan(this, activeNotifications)
             OpenScq30Store.rescan(this, activeNotifications)

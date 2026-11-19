@@ -183,6 +183,7 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
                 entries += DeviceEntry(a, if (GadgetbridgeStore.isGbAddress(a)) GadgetbridgeStore.nameOf(a) else if (OpenScq30Store.isAddress(a)) OpenScq30Store.labelOf(a) else a, DeviceKind.OTHER)
             }
             DeviceList(cfg, entries, autoPick) { cfg = it }
+            Text(OpenScq30Store.status(context), style = MaterialTheme.typography.bodySmall)
         }
 
         if (kind.needsNotificationAccess && !notificationAccess) {
