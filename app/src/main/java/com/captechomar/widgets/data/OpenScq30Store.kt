@@ -97,22 +97,32 @@ object OpenScq30Store {
         )
     }
 
+    private fun storedKey(context: Context) = sp(context).getString("key", null)
+
     fun onPosted(context: Context, sbn: StatusBarNotification?) {
         if (sbn == null || !fromApp(sbn)) return
         remember(context, sbn)
-        if (!isConnectionNotification(sbn)) return
-        publish(context, parse(sbn))
+        // whichever notification of the app carries a battery level is the connection one
+        val device = parse(sbn)
+        if (device != null) {
+            sp(context).edit().putString("key", sbn.key).apply()
+            publish(context, device)
+        } else if (sbn.key == storedKey(context) || isConnectionNotification(sbn)) {
+            publish(context, null)
+        }
     }
 
     fun onRemoved(context: Context, sbn: StatusBarNotification?) {
-        if (sbn == null || !isConnectionNotification(sbn)) return
-        publish(context, null)
+        if (sbn == null || !fromApp(sbn)) return
+        if (sbn.key == storedKey(context) || isConnectionNotification(sbn)) publish(context, null)
     }
 
     fun rescan(context: Context, active: Array<StatusBarNotification>?) {
-        val sbn = active.orEmpty().firstOrNull { isConnectionNotification(it) }
-        sbn?.let { remember(context, it) }
-        publish(context, sbn?.let { parse(it) })
+        val mine = active.orEmpty().filter { fromApp(it) }
+        mine.forEach { remember(context, it) }
+        val found = mine.firstNotNullOfOrNull { n -> parse(n)?.let { n to it } }
+        if (found != null) sp(context).edit().putString("key", found.first.key).apply()
+        publish(context, found?.second)
     }
 
     /** For the settings screen: what the listener last saw from OpenSCQ30, to help when no level shows up. */
@@ -121,7 +131,8 @@ object OpenScq30Store {
         val title = e.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
         val text = (e.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: e.getCharSequence(Notification.EXTRA_TEXT))
             ?.toString().orEmpty().replace('\n', ' ')
-        sp(context).edit().putString("last_seen", "$title | $text".take(160)).apply()
+        val ch = sbn.notification?.channelId
+        sp(context).edit().putString("last_seen", "$title | $text [id=${sbn.id} ongoing=${sbn.isOngoing} channel=$ch]".take(240)).apply()
     }
 
     fun markListenerConnected(context: Context) {
