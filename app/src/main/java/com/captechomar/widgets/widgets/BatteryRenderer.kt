@@ -88,8 +88,9 @@ object BatteryRenderer {
         paint.color = col.track
         canvas.drawRoundRect(track, trackR, trackR, paint)
 
-        if (percent >= 0) {
-            val minFill = min(trackH * 0.38f, track.width())
+        if (percent > 0) {
+            // just wide enough to stay a rounded pill, so low levels still look different from each other
+            val minFill = min(trackH * 0.12f, track.width())
             val fillW = max(percent.coerceIn(0, 100) / 100f * track.width(), minFill)
             val fillR = min(trackR, min(fillW / 2f, trackH / 2f))
             paint.color = col.fill

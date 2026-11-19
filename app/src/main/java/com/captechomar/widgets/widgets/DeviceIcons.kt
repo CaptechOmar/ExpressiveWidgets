@@ -11,9 +11,8 @@ object DeviceIcons {
     class Entry(val id: String, val label: String, @DrawableRes val outline: Int, @DrawableRes val filled: Int?)
 
     val all: List<Entry> = listOf(
-        Entry("up_phone", "Phone", R.drawable.up_phone, null),
         Entry("phone_dots_side", "Phone (dots)", R.drawable.up_phone_side, R.drawable.up_phone_side_fill),
-        Entry("up_airpods", "Earbuds", R.drawable.up_airpods, null),
+        Entry("airpods", "Earbuds (case)", R.drawable.airpods, R.drawable.airpods_fill),
         Entry("mobile", "Mobile", R.drawable.ms_mobile, R.drawable.ms_mobile_fill),
         Entry("mobile_3", "Mobile 3", R.drawable.ms_mobile_3, R.drawable.ms_mobile_3_fill),
         Entry("watch", "Watch", R.drawable.ms_watch, R.drawable.ms_watch_fill),
@@ -27,7 +26,13 @@ object DeviceIcons {
         Entry("bluetooth", "Bluetooth", R.drawable.ms_bluetooth, R.drawable.ms_bluetooth_fill),
     )
 
-    fun entry(id: String): Entry = all.firstOrNull { it.id == id } ?: all.first { it.id == "bluetooth" }
+    /** Icons that were replaced by versions with a filled variant keep working for widgets that picked them. */
+    private val renamed = mapOf("up_phone" to "phone_dots_side", "up_airpods" to "airpods")
+
+    fun entry(id: String): Entry {
+        val wanted = renamed[id] ?: id
+        return all.firstOrNull { it.id == wanted } ?: all.first { it.id == "bluetooth" }
+    }
 
     @DrawableRes
     fun res(choice: IconChoice): Int {
@@ -38,9 +43,9 @@ object DeviceIcons {
     /** What a block gets until the user picks something else. */
     fun defaultChoice(key: String, kind: DeviceKind) = IconChoice(
         when {
-            key == TapAction.PHONE -> "up_phone"
+            key == TapAction.PHONE -> "phone_dots_side"
             kind == DeviceKind.WATCH -> "watch"
-            kind == DeviceKind.EARBUDS || kind == DeviceKind.HEADPHONES -> "up_airpods"
+            kind == DeviceKind.EARBUDS || kind == DeviceKind.HEADPHONES -> "airpods"
             else -> "bluetooth"
         },
     )
