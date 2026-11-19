@@ -30,3 +30,5 @@ abstract class BaseWidgetProvider(private val kind: WidgetKind) : AppWidgetProvi
 class BatteryWidgetProvider : BaseWidgetProvider(BatteryKind)
 
 class MusicWidgetProvider : BaseWidgetProvider(MusicKind)
+
+class SavingsWidgetProvider : BaseWidgetProvider(SavingsKind)

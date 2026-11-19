@@ -135,7 +135,46 @@ object MusicKind : WidgetKind {
 }
 
 object WidgetKinds {
-    val all: List<WidgetKind> = listOf(BatteryKind, MusicKind)
+    val all: List<WidgetKind> = listOf(BatteryKind, MusicKind, SavingsKind)
 
     fun byProvider(className: String?): WidgetKind? = all.firstOrNull { it.providerClass.name == className }
+}
+
+object SavingsKind : WidgetKind {
+    override val providerClass: Class<*> = SavingsWidgetProvider::class.java
+    override val title = "Savings"
+    override val description = "A savings goal with progress, monthly change and estimated time."
+    override val layoutRes = R.layout.widget_savings
+    override val defaultConfig = WidgetConfig(roundness = 1f)
+
+    override fun render(context: Context, cfg: WidgetConfig, widthPx: Int, heightPx: Int): Bitmap =
+        SavingsRenderer.render(context, cfg, widthPx, heightPx)
+
+    override fun bindClicks(
+        context: Context, views: RemoteViews, widgetId: Int, cfg: WidgetConfig, widthDp: Float, heightDp: Float,
+    ) {
+        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        // tapping the card opens its settings
+        val settings = Intent(context, com.captechomar.widgets.ui.WidgetConfigActivity::class.java)
+            .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+        views.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, widgetId * 10 + 1, settings, flags))
+
+        // the emoji tile opens the quick calculator
+        val d = context.resources.displayMetrics.density
+        fun px(dp: Float) = (dp * d).toInt().coerceAtLeast(0)
+        val pad = SavingsRenderer.PAD * heightDp
+        val tile = SavingsRenderer.TILE * heightDp
+        val top = SavingsRenderer.TILE_TOP * heightDp
+        views.setViewPadding(
+            R.id.emoji_area,
+            px(widthDp - pad - tile), px(top), px(pad), px(heightDp - top - tile),
+        )
+        if (cfg.savings.quickCalc) {
+            val adjust = Intent(context, com.captechomar.widgets.ui.SavingsAdjustActivity::class.java)
+                .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            views.setOnClickPendingIntent(R.id.btn_emoji, PendingIntent.getActivity(context, widgetId * 10 + 2, adjust, flags))
+        } else {
+            views.setOnClickPendingIntent(R.id.btn_emoji, PendingIntent.getActivity(context, widgetId * 10 + 1, settings, flags))
+        }
+    }
 }

@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.captechomar.widgets.widgets.BatteryKind
+import com.captechomar.widgets.widgets.SavingsKind
 import com.captechomar.widgets.widgets.WidgetKinds
 import com.captechomar.widgets.widgets.WidgetUpdater
 
@@ -44,11 +45,13 @@ class WidgetConfigActivity : ComponentActivity() {
                         modifier = Modifier.systemBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
                     ) {
                         Text("${kind.title} widget", style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(bottom = 16.dp))
-                        ConfigPanel(widgetId = widgetId, kind = kind, saveLabel = "Done") {
+                        val onSaved: () -> Unit = {
                             WidgetUpdater.update(applicationContext, kind, widgetId)
                             setResult(Activity.RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
                             finish()
                         }
+                        if (kind === SavingsKind) SavingsConfigPanel(widgetId, kind, "Done", onSaved)
+                        else ConfigPanel(widgetId = widgetId, kind = kind, saveLabel = "Done", onSaved = onSaved)
                     }
                 }
             }

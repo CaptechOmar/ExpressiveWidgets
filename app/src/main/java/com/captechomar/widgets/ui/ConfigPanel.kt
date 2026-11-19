@@ -198,7 +198,7 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
 
 /** A slider with its current whole-number value shown next to the label. */
 @Composable
-private fun NumberSlider(label: String, value: Int, range: IntRange, onChange: (Int) -> Unit) {
+internal fun NumberSlider(label: String, value: Int, range: IntRange, onChange: (Int) -> Unit) {
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),

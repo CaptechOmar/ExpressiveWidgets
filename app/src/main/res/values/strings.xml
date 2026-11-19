@@ -5,6 +5,9 @@
     <string name="widget_batteries_desc">Phone battery, plus Bluetooth earphones or a Gadgetbridge device</string>
     <string name="widget_music_name">Music</string>
     <string name="widget_music_desc">Album art with play, previous and next controls</string>
+    <string name="widget_savings_name">Savings</string>
+    <string name="widget_savings_desc">A savings goal with progress, monthly change and estimated time</string>
+    <string name="savings_quick_adjust">Adjust saved amount</string>
     <string name="music_play_pause">Play or pause</string>
     <string name="music_previous">Previous track</string>
     <string name="music_next">Next track</string>
