@@ -17,6 +17,8 @@ import com.captechomar.widgets.data.SavingsStore
 import com.captechomar.widgets.data.WidgetConfig
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
+import androidx.core.content.res.ResourcesCompat
+import com.captechomar.widgets.R
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.abs
@@ -44,7 +46,9 @@ object SavingsRenderer {
         val s = cfg.savings
         val bmp = Bitmap.createBitmap(max(w, 1), max(h, 1), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
-        val col = Palettes.resolve(context, cfg.palette)
+        // a chosen picture drives the colours, the way the wallpaper drives Material You
+        val bg = SavingsStore.loadBackground(context, s.bgFile)
+        val col = if (bg != null) ArtColors.fromArt(bg, Palettes.isDark(context)).withTertiary() else Palettes.resolve(context, cfg.palette)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val W = w.toFloat()
         val H = h.toFloat()
@@ -54,7 +58,6 @@ object SavingsRenderer {
 
         // card, with the chosen picture behind a tint so the text stays readable
         val card = RectF(0f, 0f, W, H)
-        val bg = SavingsStore.loadBackground(context, s.bgFile)
         if (bg != null) {
             canvas.save()
             canvas.clipPath(Path().apply { addRoundRect(card, outerR, outerR, Path.Direction.CW) })
@@ -75,6 +78,7 @@ object SavingsRenderer {
             canvas.drawRoundRect(card, outerR, outerR, paint)
         }
         val soft = (col.fill and 0x00FFFFFF) or (if (bg != null) 0xCC shl 24 else 0xFF shl 24)
+        val tert = (col.accent and 0x00FFFFFF) or (if (bg != null) 0xE0 shl 24 else 0xFF shl 24)
 
         val now = SavingsConfig.currentMonth()
         val delta = s.monthDelta(now)
@@ -84,10 +88,10 @@ object SavingsRenderer {
         val tile = RectF(W - padX - H * TILE, H * TILE_TOP, W - padX, H * TILE_TOP + H * TILE)
         text(canvas, paint, "Savings", padX, H * 0.105f, H * 0.05f, col.content, 0.85f, Paint.Align.LEFT, false, W)
         text(canvas, paint, s.name, padX, H * 0.215f, H * 0.085f, col.content, 1f, Paint.Align.LEFT, true, tile.left - padX - H * 0.04f)
-        paint.color = soft
+        paint.color = tert
         val tileR = tile.width() * 0.28f * (0.4f + 0.6f * k)
         canvas.drawRoundRect(tile, tileR, tileR, paint)
-        if (s.emoji.isNotBlank()) drawEmoji(canvas, s.emoji, tile, s.monoEmoji, col.content)
+        if (s.emoji.isNotBlank()) drawEmoji(context, canvas, s.emoji, tile, s.monoEmoji, col.onAccent)
 
         // pills: change this month, estimated time
         var px = padX
@@ -107,9 +111,9 @@ object SavingsRenderer {
             paint.textSize = H * 0.043f
             val pw = paint.measureText(t) + H * 0.07f
             if (px + pw > W - padX) break
-            paint.color = soft
+            paint.color = tert
             canvas.drawRoundRect(RectF(px, pillTop, px + pw, pillTop + pillH), pillH / 2f, pillH / 2f, paint)
-            text(canvas, paint, t, px + H * 0.035f, pillTop + pillH / 2f, H * 0.043f, col.content, 1f, Paint.Align.LEFT, true, pw)
+            text(canvas, paint, t, px + H * 0.035f, pillTop + pillH / 2f, H * 0.043f, col.onAccent, 1f, Paint.Align.LEFT, true, pw)
             px += pw + H * 0.025f
         }
 
@@ -205,17 +209,42 @@ object SavingsRenderer {
         paint.textAlign = Paint.Align.LEFT
     }
 
-    private fun drawEmoji(canvas: Canvas, emoji: String, tile: RectF, mono: Boolean, color: Int) {
+    private var emojiFont: Typeface? = null
+
+    /** Noto Emoji, the single-colour outline emoji font (what Google Contacts' monochrome monogram uses). */
+    private fun emojiTypeface(context: Context): Typeface? {
+        emojiFont?.let { return it }
+        return try { ResourcesCompat.getFont(context, R.font.noto_emoji).also { emojiFont = it } } catch (_: Throwable) { null }
+    }
+
+    private fun drawEmoji(context: Context, canvas: Canvas, emoji: String, tile: RectF, mono: Boolean, color: Int) {
         val size = tile.width() * 0.56f
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
         p.textAlign = Paint.Align.CENTER
         p.textSize = size
+        if (mono) {
+            val font = emojiTypeface(context)
+            if (font != null) {
+                p.typeface = font
+                p.fontVariationSettings = "'wght' 500"
+                if (p.hasGlyph(emoji)) {
+                    // drawn glyphs, not a filter: the emoji keeps its detail in the text colour
+                    p.color = color
+                    val b = android.graphics.Rect()
+                    p.getTextBounds(emoji, 0, emoji.length, b)
+                    canvas.drawText(emoji, tile.centerX() - (b.left + b.right) / 2f + 0f, tile.centerY() - (b.top + b.bottom) / 2f, p)
+                    return
+                }
+                p.typeface = null
+                p.fontVariationSettings = null
+            }
+        }
         val fm = p.fontMetrics
         if (!mono) {
             canvas.drawText(emoji, tile.centerX(), tile.centerY() - (fm.ascent + fm.descent) / 2f, p)
             return
         }
-        // draw the emoji into its own layer, then use only its shape in the text colour
+        // no glyph in the outline font: use only the colour emoji's shape in the text colour
         val side = max(1, (tile.width()).toInt())
         val layer = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
         Canvas(layer).drawText(emoji, side / 2f, side / 2f - (fm.ascent + fm.descent) / 2f, p)

@@ -12,3 +12,4 @@ Every change to `main` publishes a new `x.y.z-beta.N` prerelease; stable version
 ## Adding a widget
 
 See `widgets/WidgetKind.kt` for the steps.
+- Noto Emoji font (OFL) is bundled for the monochrome emoji style.

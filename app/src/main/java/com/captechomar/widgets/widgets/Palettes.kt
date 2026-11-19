@@ -4,7 +4,22 @@ import android.content.Context
 import android.content.res.Configuration
 import android.os.Build
 
-data class WidgetColors(val container: Int, val track: Int, val fill: Int, val content: Int)
+/** [accent] / [onAccent] are the tertiary container and its content colour, used for small highlights. */
+data class WidgetColors(
+    val container: Int, val track: Int, val fill: Int, val content: Int,
+    val accent: Int = fill, val onAccent: Int = content,
+)
+
+/** Adds tertiary-style accents by turning the hue of the main colours, for palettes that have none of their own. */
+fun WidgetColors.withTertiary(): WidgetColors {
+    fun turn(c: Int): Int {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(c, hsv)
+        hsv[0] = (hsv[0] + 60f) % 360f
+        return android.graphics.Color.HSVToColor(android.graphics.Color.alpha(c), hsv)
+    }
+    return copy(accent = turn(fill), onAccent = turn(content))
+}
 
 data class PaletteOption(val id: String, val label: String)
 
@@ -45,10 +60,14 @@ object Palettes {
             track = c.getColor(android.R.color.system_accent2_900),
             fill = c.getColor(android.R.color.system_accent1_700),
             content = c.getColor(android.R.color.system_accent1_100),
+            accent = c.getColor(android.R.color.system_accent3_700),
+            onAccent = c.getColor(android.R.color.system_accent3_100),
         ) else WidgetColors(
             container = c.getColor(android.R.color.system_accent2_100),
             track = c.getColor(android.R.color.system_accent2_50),
             fill = c.getColor(android.R.color.system_accent1_300),
             content = c.getColor(android.R.color.system_accent1_900),
+            accent = c.getColor(android.R.color.system_accent3_100),
+            onAccent = c.getColor(android.R.color.system_accent3_900),
         )
 }
