@@ -94,7 +94,7 @@ fun AdjustContent(
             keyboard?.show()
         }
     }
-    fun m(delayMs: Int) = if (animate) Modifier.reveal(visible, delayMs) else Modifier
+    @Composable fun m(delayMs: Int): Modifier = if (animate) Modifier.reveal(visible, delayMs) else Modifier
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Adjust savings", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.then(m(40)))
         Text(
