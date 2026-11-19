@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.captechomar.widgets.data.BatteryReader
 import com.captechomar.widgets.data.DeviceKind
 import com.captechomar.widgets.data.GadgetbridgeStore
+import com.captechomar.widgets.data.OpenScq30Store
 import com.captechomar.widgets.data.TapAction
 import com.captechomar.widgets.data.WidgetPrefs
 import com.captechomar.widgets.music.MediaAccess
@@ -167,8 +168,11 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
             GadgetbridgeStore.known(context).forEach {
                 entries += DeviceEntry(GadgetbridgeStore.addressOf(it), it, DeviceKind.fromName(it) ?: DeviceKind.WATCH)
             }
+            OpenScq30Store.known(context).forEach {
+                entries += DeviceEntry(OpenScq30Store.addressOf(it), it, DeviceKind.fromName(it) ?: DeviceKind.EARBUDS)
+            }
             cfg.deviceAddresses.filter { a -> entries.none { it.key == a } }.forEach { a ->
-                entries += DeviceEntry(a, if (GadgetbridgeStore.isGbAddress(a)) GadgetbridgeStore.nameOf(a) else a, DeviceKind.OTHER)
+                entries += DeviceEntry(a, if (GadgetbridgeStore.isGbAddress(a)) GadgetbridgeStore.nameOf(a) else if (OpenScq30Store.isAddress(a)) OpenScq30Store.nameOf(a) else a, DeviceKind.OTHER)
             }
             DeviceList(cfg, entries, autoPick) { cfg = it }
         }

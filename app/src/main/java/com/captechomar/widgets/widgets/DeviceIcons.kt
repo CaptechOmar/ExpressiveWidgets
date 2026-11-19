@@ -12,6 +12,7 @@ object DeviceIcons {
 
     val all: List<Entry> = listOf(
         Entry("up_phone", "Phone", R.drawable.up_phone, null),
+        Entry("phone_dots_side", "Phone (dots)", R.drawable.up_phone_side, R.drawable.up_phone_side_fill),
         Entry("up_airpods", "Earbuds", R.drawable.up_airpods, null),
         Entry("mobile", "Mobile", R.drawable.ms_mobile, R.drawable.ms_mobile_fill),
         Entry("mobile_3", "Mobile 3", R.drawable.ms_mobile_3, R.drawable.ms_mobile_3_fill),

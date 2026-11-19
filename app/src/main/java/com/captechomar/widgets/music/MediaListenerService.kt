@@ -13,6 +13,7 @@ import android.os.Looper
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.captechomar.widgets.data.GadgetbridgeStore
+import com.captechomar.widgets.data.OpenScq30Store
 import com.captechomar.widgets.widgets.MusicKind
 import com.captechomar.widgets.widgets.WidgetUpdater
 
@@ -43,6 +44,7 @@ class MediaListenerService : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
         GadgetbridgeStore.onPosted(this, sbn)
+        OpenScq30Store.onPosted(this, sbn)
     }
 
     override fun onNotificationRemoved(
@@ -53,11 +55,13 @@ class MediaListenerService : NotificationListenerService() {
         // swiping the notification away or tapping it does not mean the device went away
         if (reason == NotificationListenerService.REASON_CANCEL || reason == NotificationListenerService.REASON_CLICK) return
         GadgetbridgeStore.onRemoved(this, sbn)
+        OpenScq30Store.onRemoved(this, sbn)
     }
 
     override fun onListenerConnected() {
         try {
             GadgetbridgeStore.rescan(this, activeNotifications)
+            OpenScq30Store.rescan(this, activeNotifications)
         } catch (_: Throwable) {
         }
         val m = getSystemService(MediaSessionManager::class.java) ?: return

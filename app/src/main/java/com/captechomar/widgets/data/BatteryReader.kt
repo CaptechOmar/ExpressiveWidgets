@@ -92,7 +92,11 @@ object BatteryReader {
         val connected by lazy { connectedDevices(context) }
         val gadgetbridge = GadgetbridgeStore.current(context)
         return addresses.mapNotNull { address ->
-            if (GadgetbridgeStore.isGbAddress(address)) {
+            if (OpenScq30Store.isAddress(address)) {
+                val name = OpenScq30Store.nameOf(address)
+                OpenScq30Store.current(context)?.takeIf { it.name == name }
+                    ?.let { BtBattery(it.name, address, it.percent, isAudio = true, kind = DeviceKind.fromName(it.name) ?: DeviceKind.EARBUDS) }
+            } else if (GadgetbridgeStore.isGbAddress(address)) {
                 val name = GadgetbridgeStore.nameOf(address)
                 gadgetbridge.firstOrNull { it.name == name }?.let { BtBattery(it.name, address, it.percent, isAudio = false, kind = DeviceKind.fromName(it.name) ?: DeviceKind.WATCH) }
             } else {
