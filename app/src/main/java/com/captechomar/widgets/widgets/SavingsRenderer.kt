@@ -132,21 +132,28 @@ object SavingsRenderer {
         if (s.expressive) {
             paint.style = Paint.Style.STROKE
             paint.strokeCap = Paint.Cap.ROUND
-            // thin track after the wave
-            paint.strokeWidth = H * 0.022f
+            // thin track after the wave, with a small dot at its end
+            paint.strokeWidth = H * 0.014f
             paint.color = soft
-            canvas.drawLine(min(fillEnd + H * 0.03f, x1End), barY, x1End, barY, paint)
+            val trackStart = min(fillEnd + H * 0.02f, x1End)
+            canvas.drawLine(trackStart, barY, x1End, barY, paint)
+            paint.style = Paint.Style.FILL
+            paint.color = col.content
+            paint.alpha = 220
+            canvas.drawCircle(x1End - H * 0.009f, barY, H * 0.0062f, paint)
+            paint.alpha = 255
+            paint.style = Paint.Style.STROKE
             if (frac > 0f) {
                 val path = Path()
-                val amp = H * 0.012f
-                val lam = H * 0.11f
+                val amp = H * 0.0095f
+                val lam = H * 0.094f
                 path.moveTo(padX, barY)
                 var x = padX
                 while (x <= fillEnd) {
                     path.lineTo(x, barY + amp * sin(2.0 * PI * (x - padX) / lam).toFloat())
                     x += 1.5f
                 }
-                paint.strokeWidth = H * 0.04f
+                paint.strokeWidth = H * 0.017f
                 paint.color = col.content
                 canvas.drawPath(path, paint)
             }
