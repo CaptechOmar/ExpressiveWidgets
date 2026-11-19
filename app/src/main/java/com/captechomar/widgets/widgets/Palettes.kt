@@ -39,7 +39,7 @@ object Palettes {
     fun resolve(context: Context, id: String): WidgetColors {
         val dark = isDark(context)
         if (id == "dynamic" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return dynamic(context, dark)
-        return (when (id) {
+        return when (id) {
             "ocean" -> if (dark) WidgetColors(0xFF0A3347.toInt(), 0xFF00202E.toInt(), 0xFF004D6B.toInt(), 0xFF8FD3F4.toInt())
             else WidgetColors(0xFFCFE6F2.toInt(), 0xFFEAF5FB.toInt(), 0xFF8CCBEA.toInt(), 0xFF00354A.toInt())
             "rose" -> if (dark) WidgetColors(0xFF45202D.toInt(), 0xFF2A0F1A.toInt(), 0xFF6F2C42.toInt(), 0xFFFFB1C8.toInt())
@@ -51,7 +51,7 @@ object Palettes {
             // "forest" and the fallback for "dynamic" on Android < 12
             else -> if (dark) WidgetColors(0xFF083A31.toInt(), 0xFF001F1A.toInt(), 0xFF005140.toInt(), 0xFF7DDDC0.toInt())
             else WidgetColors(0xFFCDEBE0.toInt(), 0xFFE8F6F0.toInt(), 0xFF8ADBC0.toInt(), 0xFF00382C.toInt())
-        }).withTertiary()
+        }
     }
 
     private fun dynamic(c: Context, dark: Boolean): WidgetColors =

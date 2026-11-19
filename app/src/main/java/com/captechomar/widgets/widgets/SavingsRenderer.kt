@@ -48,7 +48,7 @@ object SavingsRenderer {
         val canvas = Canvas(bmp)
         // a chosen picture drives the colours, the way the wallpaper drives Material You
         val bg = SavingsStore.loadBackground(context, s.bgFile)
-        val col = if (bg != null) ArtColors.fromArt(bg, Palettes.isDark(context)).withTertiary() else Palettes.resolve(context, cfg.palette)
+        val col = if (bg != null) PictureColors.fromPicture(bg, w.toFloat(), h.toFloat(), Palettes.isDark(context)) else Palettes.resolve(context, cfg.palette)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val W = w.toFloat()
         val H = h.toFloat()
@@ -70,7 +70,7 @@ object SavingsRenderer {
             paint.shader = shader
             canvas.drawRect(card, paint)
             paint.shader = null
-            paint.color = (col.container and 0x00FFFFFF) or (0xB8 shl 24)
+            paint.color = (col.container and 0x00FFFFFF) or (0xAB shl 24)
             canvas.drawRect(card, paint)
             canvas.restore()
         } else {
