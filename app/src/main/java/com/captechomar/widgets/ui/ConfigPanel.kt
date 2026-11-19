@@ -208,36 +208,6 @@ private fun NumberSlider(label: String, value: Int, range: IntRange, onChange: (
             Text(label, style = MaterialTheme.typography.titleMedium)
             Text(value.toString(), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
         }
-        Slider(label: String, value: Int, range: IntRange, onChange: (Int) -> Unit) {
-    // reset the text whenever the slider moves the value
-    var text by remember(value) { mutableStateOf(value.toString()) }
-
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(label, style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(
-                value = text,
-                onValueChange = { input ->
-                    val digits = input.filter { it.isDigit() }.take(3)
-                    val n = digits.toIntOrNull()
-                    if (n == null) {
-                        text = digits
-                    } else {
-                        val clamped = n.coerceIn(range)
-                        text = if (clamped != n) clamped.toString() else digits
-                        onChange(clamped)
-                    }
-                },
-                modifier = Modifier.width(96.dp),
-                singleLine = true,
-                textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.End),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            )
-        }
         Slider(
             value = value.toFloat(),
             onValueChange = { onChange(it.roundToInt()) },
