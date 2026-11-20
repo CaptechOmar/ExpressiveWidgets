@@ -83,26 +83,26 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
             modifier = Modifier.fillMaxWidth().aspectRatio(900f / 230f),
         )
 
-        Text("Colors", style = MaterialTheme.typography.titleMedium)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Palettes.options.forEach { option ->
-                FilterChip(
-                    selected = cfg.palette == option.id,
-                    onClick = { cfg = cfg.copy(palette = option.id) },
-                    label = { Text(option.label) },
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
+        Section("Colors") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Palettes.options.forEach { option ->
+                    FilterChip(
+                        selected = cfg.palette == option.id,
+                        onClick = { cfg = cfg.copy(palette = option.id) },
+                        label = { Text(option.label) },
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
             }
-        }
-
-        if (kind.supportsArt) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text("Colors from album art", style = MaterialTheme.typography.titleMedium)
-                Switch(checked = cfg.artColors, onCheckedChange = { cfg = cfg.copy(artColors = it) })
+            if (kind.supportsArt) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text("Colors from album art", style = MaterialTheme.typography.bodyLarge)
+                    Switch(checked = cfg.artColors, onCheckedChange = { cfg = cfg.copy(artColors = it) })
+                }
             }
         }
 
@@ -111,58 +111,56 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
         }
 
         // Shape settings are whole numbers so the same shape can be typed in on another widget.
-        NumberSlider(
-            label = if (kind.supportsArt) "Widget roundness" else "Roundness",
-            value = (cfg.roundness * 100).roundToInt(),
-            range = 0..100,
-            onChange = { cfg = cfg.copy(roundness = it / 100f) },
-        )
-        if (kind.supportsArt) {
+        Section("Shape") {
             NumberSlider(
-                label = "Album art roundness",
-                value = (cfg.artRoundness * 100).roundToInt(),
+                label = if (kind.supportsArt) "Widget roundness" else "Roundness",
+                value = (cfg.roundness * 100).roundToInt(),
                 range = 0..100,
-                onChange = { cfg = cfg.copy(artRoundness = it / 100f) },
+                onChange = { cfg = cfg.copy(roundness = it / 100f) },
             )
-            NumberSlider(
-                label = "Height (%)",
-                value = (cfg.heightScale * 100).roundToInt(),
-                range = 60..160,
-                onChange = { cfg = cfg.copy(heightScale = it / 100f) },
-            )
-        }
-        Text(
-            "Type a number to set a value exactly. Use the same numbers on another widget to get the same shape.",
-            style = MaterialTheme.typography.bodySmall,
-        )
-
-        if (kind.usesEarphones) {
-            Text("Devices", style = MaterialTheme.typography.titleMedium)
+            if (kind.supportsArt) {
+                NumberSlider(
+                    label = "Album art roundness",
+                    value = (cfg.artRoundness * 100).roundToInt(),
+                    range = 0..100,
+                    onChange = { cfg = cfg.copy(artRoundness = it / 100f) },
+                )
+                NumberSlider(
+                    label = "Height (%)",
+                    value = (cfg.heightScale * 100).roundToInt(),
+                    range = 60..160,
+                    onChange = { cfg = cfg.copy(heightScale = it / 100f) },
+                )
+            }
             Text(
-                "Drag the handle to reorder. The toggle puts a device on the widget while it is connected. " +
-                    "The gear changes its icon and what happens when you tap it.",
+                "Type a number to set a value exactly. Use the same numbers on another widget to get the same shape.",
                 style = MaterialTheme.typography.bodySmall,
             )
+        }
+
+        if (kind.usesEarphones) {
             if (!hasPermission && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                Text(
-                    "Allow Bluetooth access so the widget can read your earphones' battery.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                FilledTonalButton(onClick = { permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT) }) {
-                    Text("Allow Bluetooth access")
-                }
+                ActionContainer(
+                    "Bluetooth access needed",
+                    "Lets the widget read your earphones' battery.",
+                    "Allow",
+                ) { permissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT) }
             }
             if (!notificationAccess) {
-                Text(
-                    "For Gadgetbridge devices, allow notification access so the widget can read the battery " +
-                        "from Gadgetbridge's notification. If the switch is greyed out, open this app's info page, " +
-                        "tap the three dots and choose \"Allow restricted settings\" first.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                FilledTonalButton(onClick = {
-                    notificationLauncher.launch(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                }) { Text("Open notification access") }
+                ActionContainer(
+                    "Notification access needed",
+                    "Gadgetbridge and OpenSCQ30 devices are read from their notifications. If the switch is greyed out, " +
+                        "open this app's info page, tap the three dots and choose \"Allow restricted settings\" first.",
+                    "Open",
+                ) { notificationLauncher.launch(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
             }
+            Section("Devices") {
+                Text(
+                    "Drag the handle to reorder. The toggle puts a device on the widget while it is connected. " +
+                        "The gear changes its icon and what happens when you tap it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             val entries = ArrayList<DeviceEntry>()
             devices.forEach { entries += DeviceEntry(it.address, it.name, it.kind) }
             GadgetbridgeStore.known(context).forEach {
@@ -183,20 +181,16 @@ fun ConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSaved: () 
                 entries += DeviceEntry(a, if (GadgetbridgeStore.isGbAddress(a)) GadgetbridgeStore.nameOf(a) else if (OpenScq30Store.isAddress(a)) OpenScq30Store.labelOf(a) else a, DeviceKind.OTHER)
             }
             DeviceList(cfg, entries, autoPick) { cfg = it }
-            Text(OpenScq30Store.status(context), style = MaterialTheme.typography.bodySmall)
+            }
         }
 
         if (kind.needsNotificationAccess && !notificationAccess) {
-            Text("Notification access", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "Android only lets an app see what's playing through notification access. " +
-                    "If the switch is greyed out, open this app's info page, tap the three dots and choose " +
-                    "\"Allow restricted settings\" first.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            FilledTonalButton(onClick = {
-                notificationLauncher.launch(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-            }) { Text("Open notification access") }
+            ActionContainer(
+                "Notification access needed",
+                "Android only lets an app see what's playing through notification access. If the switch is greyed out, " +
+                    "open this app's info page, tap the three dots and choose \"Allow restricted settings\" first.",
+                "Open",
+            ) { notificationLauncher.launch(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
         }
 
         Button(

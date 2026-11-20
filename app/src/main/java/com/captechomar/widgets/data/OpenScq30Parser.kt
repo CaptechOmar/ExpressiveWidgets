@@ -24,10 +24,6 @@ object OpenScq30Parser {
     private fun clean(s: String?): String =
         s.orEmpty().filter { Character.getType(it) != Character.FORMAT.toInt() }.replace('\u00A0', ' ')
 
-    /** Non-ASCII characters in [s], as code points, for the settings status line. */
-    fun oddChars(s: String?): String =
-        s.orEmpty().filter { it.code > 127 }.toSet().take(8).joinToString(" ") { "U+%04X".format(it.code) }
-
     private fun number(digits: String): Int? =
         digits.fold(0) { acc, c -> acc * 10 + Character.digit(c, 10).coerceAtLeast(0) }.takeIf { it in 0..100 }
 

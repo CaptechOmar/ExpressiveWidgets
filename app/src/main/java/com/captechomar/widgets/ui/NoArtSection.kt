@@ -45,8 +45,7 @@ fun NoArtSection(mode: String, onMode: (String) -> Unit, onChanged: () -> Unit) 
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("When there's no album art", style = MaterialTheme.typography.titleMedium)
+    Section("When there's no album art") {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected = mode == ArtFallback.ICON,

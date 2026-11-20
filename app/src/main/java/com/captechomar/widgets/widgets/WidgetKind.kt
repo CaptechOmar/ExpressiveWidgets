@@ -28,6 +28,7 @@ interface WidgetKind {
     val providerClass: Class<*>
     val title: String
     val description: String
+    @get:androidx.annotation.DrawableRes val iconRes: Int
 
     @get:LayoutRes
     val layoutRes: Int
@@ -48,6 +49,7 @@ internal fun openAppIntent(context: Context, requestCode: Int): PendingIntent =
 
 object BatteryKind : WidgetKind {
     override val providerClass: Class<*> = BatteryWidgetProvider::class.java
+    override val iconRes = R.drawable.kind_battery
     override val title = "Batteries"
     override val description = "Phone battery, plus Bluetooth earphones or a Gadgetbridge device."
     override val layoutRes = R.layout.widget_image
@@ -91,6 +93,7 @@ object BatteryKind : WidgetKind {
 
 object MusicKind : WidgetKind {
     override val providerClass: Class<*> = MusicWidgetProvider::class.java
+    override val iconRes = R.drawable.kind_music
     override val title = "Music"
     override val description = "Album art with play, previous and next controls for whatever is playing."
     override val layoutRes = R.layout.widget_music
@@ -142,6 +145,7 @@ object WidgetKinds {
 
 object SavingsKind : WidgetKind {
     override val providerClass: Class<*> = SavingsWidgetProvider::class.java
+    override val iconRes = R.drawable.kind_savings
     override val title = "Savings"
     override val description = "A savings goal with progress, monthly change and estimated time."
     override val layoutRes = R.layout.widget_savings

@@ -30,6 +30,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.toShape
+import androidx.graphics.shapes.RoundedPolygon
+import kotlin.random.Random
 import com.captechomar.widgets.widgets.WidgetKind
 import com.captechomar.widgets.widgets.WidgetKinds
 import com.captechomar.widgets.widgets.WidgetUpdater
@@ -44,11 +61,21 @@ class MainActivity : ComponentActivity() {
             AppTheme {
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Column(
-                        modifier = Modifier.systemBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.systemBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text("Expressive Widgets", style = MaterialTheme.typography.headlineLarge)
-                        WidgetKinds.all.forEach { AddWidgetCard(it) }
+                        Text("Expressive Widgets", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(start = 6.dp))
+                        Text(
+                            "Tap Add, or long-press your home screen \u2192 Widgets. Long-press a widget to change its shape and colours.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 6.dp, bottom = 8.dp),
+                        )
+                        Text("Widgets", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 6.dp))
+                        // a new random shape for every widget each time the app is opened
+                        val seed = rememberSaveable { Random.nextInt() }
+                        val shapes = remember(seed) { SHAPES.shuffled(Random(seed)) }
+                        WidgetKinds.all.forEachIndexed { i, kind -> AddWidgetCard(kind, i, shapes[i % shapes.size]) }
                         WidgetList(refresh)
                     }
                 }
@@ -64,21 +91,52 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private val SHAPES: List<RoundedPolygon> = listOf(
+    MaterialShapes.Sunny, MaterialShapes.VerySunny, MaterialShapes.Cookie4Sided, MaterialShapes.Cookie6Sided,
+    MaterialShapes.Cookie7Sided, MaterialShapes.Cookie9Sided, MaterialShapes.Cookie12Sided, MaterialShapes.Clover4Leaf,
+    MaterialShapes.Clover8Leaf, MaterialShapes.Burst, MaterialShapes.SoftBurst, MaterialShapes.Flower,
+    MaterialShapes.Puffy, MaterialShapes.Pentagon, MaterialShapes.Gem, MaterialShapes.Ghostish,
+)
+
+/** The shape behind a widget's icon: backgrounds alternate primary, secondary and tertiary. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun AddWidgetCard(kind: WidgetKind) {
+private fun ShapeIcon(iconRes: Int, index: Int, polygon: RoundedPolygon, size: Dp = 72.dp) {
+    val c = MaterialTheme.colorScheme
+    val (bg, fg) = when (index % 3) {
+        0 -> c.primary to c.onPrimary
+        1 -> c.secondaryContainer to c.onSecondaryContainer
+        else -> c.tertiary to c.onTertiary
+    }
+    Box(Modifier.size(size).clip(polygon.toShape()).background(bg), contentAlignment = Alignment.Center) {
+        Icon(painterResource(iconRes), contentDescription = null, tint = fg, modifier = Modifier.size(size * 0.45f))
+    }
+}
+
+@Composable
+private fun AddWidgetCard(kind: WidgetKind, index: Int, polygon: RoundedPolygon) {
     val context = LocalContext.current
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(kind.title, style = MaterialTheme.typography.titleLarge)
-            Text(kind.description, style = MaterialTheme.typography.bodyMedium)
-            val awm = AppWidgetManager.getInstance(context)
-            if (awm.isRequestPinAppWidgetSupported) {
-                Button(onClick = {
-                    awm.requestPinAppWidget(ComponentName(context, kind.providerClass), null, null)
-                }) { Text("Add to home screen") }
-            } else {
-                Text("Long-press your home screen, open Widgets and pick Expressive Widgets.", style = MaterialTheme.typography.bodySmall)
+    val awm = AppWidgetManager.getInstance(context)
+    Container {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            ShapeIcon(kind.iconRes, index, polygon)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(kind.title, style = MaterialTheme.typography.titleLarge)
+                Text(kind.description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
+            if (awm.isRequestPinAppWidgetSupported) {
+                FilledTonalButton(
+                    onClick = { awm.requestPinAppWidget(ComponentName(context, kind.providerClass), null, null) },
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    ),
+                ) { Text("Add", style = MaterialTheme.typography.titleMedium) }
+            }
+        }
+        if (!awm.isRequestPinAppWidgetSupported) {
+            Text("Long-press your home screen, open Widgets and pick Expressive Widgets.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -93,25 +151,25 @@ private fun WidgetList(refresh: Int) {
         }
     } else emptyList()
 
+    Text("Your widgets", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 6.dp, top = 8.dp))
     if (placed.isEmpty()) {
-        Text("No widgets placed yet.", style = MaterialTheme.typography.bodyMedium)
+        Container { Text("No widgets placed yet.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         return
     }
-    Text("Your widgets", style = MaterialTheme.typography.titleMedium)
     placed.forEach { (kind, number, id) ->
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Container {
             Row(
-                Modifier.fillMaxWidth().padding(16.dp),
+                Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text("${kind.title} #$number", style = MaterialTheme.typography.titleMedium)
-                FilledTonalButton(onClick = {
+                TextButton(onClick = {
                     context.startActivity(
                         Intent(context, WidgetConfigActivity::class.java)
                             .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
                     )
-                }) { Text("Customize") }
+                }) { Text("Customize", style = MaterialTheme.typography.titleMedium) }
             }
         }
     }

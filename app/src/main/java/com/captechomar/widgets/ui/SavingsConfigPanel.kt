@@ -77,94 +77,97 @@ fun SavingsConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
             modifier = Modifier.fillMaxWidth().aspectRatio(900f / 566f),
         )
 
-        Text("Appearance", style = MaterialTheme.typography.titleMedium)
-        Row(
-            modifier = Modifier.fillMaxWidth().clickable { picker.launch("image/*") },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text("Set background image", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    if (s.bgFile.isEmpty()) "Choose a photo from your gallery" else "Tap to change the photo",
-                    style = MaterialTheme.typography.bodySmall,
+        Section("Appearance") {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { picker.launch("image/*") },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("Set background image", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        if (s.bgFile.isEmpty()) "Choose a photo from your gallery" else "Tap to change the photo",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                if (s.bgFile.isNotEmpty()) {
+                    TextButton(onClick = {
+                        if (cfg.savings.bgFile != oldBg) SavingsStore.deleteBackground(context, cfg.savings.bgFile)
+                        update { it.copy(bgFile = "") }
+                    }) { Text("Remove") }
+                }
+            }
+            SwitchRow("Expressive style", "Use wavy shapes instead of standard linear ones", s.expressive) { v -> update { it.copy(expressive = v) } }
+            SwitchRow("Quick calculator", "Make the emoji tappable for quick amount adjustment via a calculator", s.quickCalc) { v -> update { it.copy(quickCalc = v) } }
+            SwitchRow("Monthly progress", "Display progress added this month", s.monthly) { v -> update { it.copy(monthly = v) } }
+            SwitchRow("Debt mode", "Show the remaining amount as the main value", s.debtMode) { v -> update { it.copy(debtMode = v) } }
+            SwitchRow("Estimated time", "Display approximate months remaining to reach the goal (visible only if there is progress this month)", s.estimated) { v -> update { it.copy(estimated = v) } }
+            SwitchRow("Monochrome emoji", "Make the emoji match the widget's text color", s.monoEmoji) { v -> update { it.copy(monoEmoji = v) } }
+        }
+
+        Section("Colors") {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Palettes.options.forEach { option ->
+                    FilterChip(
+                        selected = cfg.palette == option.id,
+                        onClick = { cfg = cfg.copy(palette = option.id) },
+                        label = { Text(option.label) },
+                        modifier = Modifier.padding(bottom = 4.dp),
+                    )
+                }
+            }
+            NumberSlider("Roundness", (cfg.roundness * 100).roundToInt(), 0..100) { cfg = cfg.copy(roundness = it / 100f) }
+        }
+
+        Section("Content") {
+            OutlinedTextField(
+                value = s.name,
+                onValueChange = { v -> update { it.copy(name = v.take(40)) } },
+                label = { Text("Goal name") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = s.emoji,
+                    onValueChange = { v -> update { it.copy(emoji = v.take(8)) } },
+                    label = { Text("Emoji") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
+                )
+                OutlinedTextField(
+                    value = s.currency,
+                    onValueChange = { v -> update { it.copy(currency = v.take(4)) } },
+                    label = { Text("Currency") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
                 )
             }
-            if (s.bgFile.isNotEmpty()) {
-                TextButton(onClick = {
-                    if (cfg.savings.bgFile != oldBg) SavingsStore.deleteBackground(context, cfg.savings.bgFile)
-                    update { it.copy(bgFile = "") }
-                }) { Text("Remove") }
-            }
-        }
-        SwitchRow("Expressive style", "Use wavy shapes instead of standard linear ones", s.expressive) { v -> update { it.copy(expressive = v) } }
-        SwitchRow("Quick calculator", "Make the emoji tappable for quick amount adjustment via a calculator", s.quickCalc) { v -> update { it.copy(quickCalc = v) } }
-        SwitchRow("Monthly progress", "Display progress added this month", s.monthly) { v -> update { it.copy(monthly = v) } }
-        SwitchRow("Debt mode", "Show the remaining amount as the main value", s.debtMode) { v -> update { it.copy(debtMode = v) } }
-        SwitchRow("Estimated time", "Display approximate months remaining to reach the goal (visible only if there is progress this month)", s.estimated) { v -> update { it.copy(estimated = v) } }
-        SwitchRow("Monochrome emoji", "Make the emoji match the widget's text color", s.monoEmoji) { v -> update { it.copy(monoEmoji = v) } }
-
-        Text("Colors", style = MaterialTheme.typography.titleMedium)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Palettes.options.forEach { option ->
-                FilterChip(
-                    selected = cfg.palette == option.id,
-                    onClick = { cfg = cfg.copy(palette = option.id) },
-                    label = { Text(option.label) },
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-            }
-        }
-        NumberSlider("Roundness", (cfg.roundness * 100).roundToInt(), 0..100) { cfg = cfg.copy(roundness = it / 100f) }
-
-        Text("Content", style = MaterialTheme.typography.titleMedium)
-        OutlinedTextField(
-            value = s.name,
-            onValueChange = { v -> update { it.copy(name = v.take(40)) } },
-            label = { Text("Goal name") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             OutlinedTextField(
-                value = s.emoji,
-                onValueChange = { v -> update { it.copy(emoji = v.take(8)) } },
-                label = { Text("Emoji") },
+                value = targetText,
+                onValueChange = { v ->
+                    val t = v.filter { it.isDigit() || it == '.' }
+                    targetText = t
+                    update { it.copy(target = t.toDoubleOrNull() ?: 0.0) }
+                },
+                label = { Text("Target amount") },
                 singleLine = true,
-                modifier = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(
-                value = s.currency,
-                onValueChange = { v -> update { it.copy(currency = v.take(4)) } },
-                label = { Text("Currency") },
+                value = savedText,
+                onValueChange = { v ->
+                    val t = v.filter { it.isDigit() || it == '.' }
+                    savedText = t
+                    update { it.copy(saved = t.toDoubleOrNull() ?: 0.0) }
+                },
+                label = { Text("Saved amount") },
                 singleLine = true,
-                modifier = Modifier.weight(1f),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
             )
         }
-        OutlinedTextField(
-            value = targetText,
-            onValueChange = { v ->
-                val t = v.filter { it.isDigit() || it == '.' }
-                targetText = t
-                update { it.copy(target = t.toDoubleOrNull() ?: 0.0) }
-            },
-            label = { Text("Target amount") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = savedText,
-            onValueChange = { v ->
-                val t = v.filter { it.isDigit() || it == '.' }
-                savedText = t
-                update { it.copy(saved = t.toDoubleOrNull() ?: 0.0) }
-            },
-            label = { Text("Saved amount") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            modifier = Modifier.fillMaxWidth(),
-        )
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedButton(onClick = {

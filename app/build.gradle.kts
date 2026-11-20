@@ -59,5 +59,6 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3:1.4.0-alpha18")
     implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.graphics:graphics-shapes:1.0.1")
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 }
