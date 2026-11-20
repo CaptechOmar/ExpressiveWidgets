@@ -129,8 +129,8 @@ private fun AddWidgetCard(kind: WidgetKind, index: Int, polygon: RoundedPolygon)
                 FilledTonalButton(
                     onClick = { awm.requestPinAppWidget(ComponentName(context, kind.providerClass), null, null) },
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.onSecondary,
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     ),
                 ) { Text("Add", style = MaterialTheme.typography.titleMedium) }
             }
