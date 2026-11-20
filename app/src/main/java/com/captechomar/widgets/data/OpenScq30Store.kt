@@ -111,7 +111,9 @@ object OpenScq30Store {
             remember(context, sbn)
             // whichever notification of the app carries a battery level is the connection one
             val device = parse(sbn)
-            log(context, "posted: " + (device?.let { "read ${it.name} ${it.percent}%" } ?: "no level found"))
+            val e = sbn.notification.extras
+            val odd = OpenScq30Parser.oddChars(e.getCharSequence(Notification.EXTRA_TITLE)?.toString() + (e.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: e.getCharSequence(Notification.EXTRA_TEXT)))
+            log(context, "posted: " + (device?.let { "read ${it.name} ${it.percent}%" } ?: "no level found") + if (odd.isNotEmpty()) " [chars $odd]" else "")
             if (device != null) {
                 sp(context).edit().putString("key", sbn.key).apply()
                 publish(context, device)
