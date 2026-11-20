@@ -88,12 +88,14 @@ object BatteryRenderer {
         paint.color = col.track
         canvas.drawRoundRect(track, trackR, trackR, paint)
 
+        var fillRight = track.left
         if (percent > 0) {
             // just wide enough to stay a rounded pill, so low levels still look different from each other
             val minFill = min(trackH * 0.12f, track.width())
             val fillW = max(percent.coerceIn(0, 100) / 100f * track.width(), minFill)
             val fillR = min(trackR, min(fillW / 2f, trackH / 2f))
-            paint.color = col.fill
+            paint.color = col.bar
+            fillRight = track.left + fillW
             canvas.drawRoundRect(RectF(track.left, track.top, track.left + fillW, track.bottom), fillR, fillR, paint)
         }
 
@@ -115,17 +117,20 @@ object BatteryRenderer {
         paint.textSize = trackH * TEXT_SIZE * scale
 
         val cy = track.centerY()
-        drawIcon(context, canvas, icon, track.left + margin, cy, iconSize, col.content)
+        drawIcon(context, canvas, icon, track.left + margin, cy, iconSize, if (percent > 0) col.onBar else col.content)
 
-        paint.color = col.content
         val fm = paint.fontMetrics
         val textRight = track.right - textMargin
+        // the figure and bolt are drawn in the bar's text colour when the bar reaches under them
+        val onBar = fillRight >= textRight - paint.measureText(text) / 2f
+        val textColor = if (onBar) col.onBar else col.content
+        paint.color = textColor
         canvas.drawText(text, textRight, cy - (fm.ascent + fm.descent) / 2f, paint)
 
         if (charging) {
             val textLeft = textRight - paint.measureText(text)
             val boltSize = iconSize * 0.85f
-            drawIcon(context, canvas, R.drawable.ic_bolt, textLeft - boltSize - trackH * 0.04f * scale, cy, boltSize, col.content)
+            drawIcon(context, canvas, R.drawable.ic_bolt, textLeft - boltSize - trackH * 0.04f * scale, cy, boltSize, textColor)
         }
     }
 

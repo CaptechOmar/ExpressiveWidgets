@@ -9,6 +9,8 @@ import androidx.compose.ui.graphics.toArgb
 data class WidgetColors(
     val container: Int, val track: Int, val fill: Int, val content: Int,
     val accent: Int = fill, val onAccent: Int = content,
+    /** The battery bar and the text on it; the same as [fill]/[content] unless a palette sets them. */
+    val bar: Int = fill, val onBar: Int = content,
 )
 
 /** Adds tertiary-style accents by turning the hue of the main colours, for palettes that have none of their own. */
@@ -62,6 +64,8 @@ object Palettes {
             content = content,
             accent = s.tertiaryContainer.toArgb(),
             onAccent = s.onTertiaryContainer.toArgb(),
+            bar = s.primary.toArgb(),
+            onBar = s.onPrimary.toArgb(),
         )
     }
 
