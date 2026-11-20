@@ -105,7 +105,7 @@ private val SHAPES: List<RoundedPolygon> = listOf(
 private fun ShapeIcon(iconRes: Int, index: Int, polygon: RoundedPolygon, size: Dp = 72.dp) {
     val c = MaterialTheme.colorScheme
     val (bg, fg) = when (index % 3) {
-        0 -> c.primary to c.onPrimary
+        0 -> c.primaryContainer to c.onPrimaryContainer
         1 -> c.secondaryContainer to c.onSecondaryContainer
         else -> c.tertiary to c.onTertiary
     }
@@ -129,8 +129,8 @@ private fun AddWidgetCard(kind: WidgetKind, index: Int, polygon: RoundedPolygon)
                 FilledTonalButton(
                     onClick = { awm.requestPinAppWidget(ComponentName(context, kind.providerClass), null, null) },
                     colors = ButtonDefaults.filledTonalButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor = MaterialTheme.colorScheme.onSecondary,
                     ),
                 ) { Text("Add", style = MaterialTheme.typography.titleMedium) }
             }

@@ -106,16 +106,7 @@ fun SavingsConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
         }
 
         Section("Colors") {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Palettes.options.forEach { option ->
-                    FilterChip(
-                        selected = cfg.palette == option.id,
-                        onClick = { cfg = cfg.copy(palette = option.id) },
-                        label = { Text(option.label) },
-                        modifier = Modifier.padding(bottom = 4.dp),
-                    )
-                }
-            }
+            PaletteRow(cfg.palette) { cfg = cfg.copy(palette = it) }
             NumberSlider("Roundness", (cfg.roundness * 100).roundToInt(), 0..100) { cfg = cfg.copy(roundness = it / 100f) }
         }
 
