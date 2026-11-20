@@ -77,6 +77,11 @@ fun SavingsConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
             modifier = Modifier.fillMaxWidth().aspectRatio(900f / 566f),
         )
 
+        Section("Colors") {
+            PaletteRow(cfg.palette) { cfg = cfg.copy(palette = it) }
+            NumberSlider("Roundness", (cfg.roundness * 100).roundToInt(), 0..100) { cfg = cfg.copy(roundness = it / 100f) }
+        }
+
         Section("Appearance") {
             Row(
                 modifier = Modifier.fillMaxWidth().clickable { picker.launch("image/*") },
@@ -103,11 +108,6 @@ fun SavingsConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
             SwitchRow("Debt mode", "Show the remaining amount as the main value", s.debtMode) { v -> update { it.copy(debtMode = v) } }
             SwitchRow("Estimated time", "Display approximate months remaining to reach the goal (visible only if there is progress this month)", s.estimated) { v -> update { it.copy(estimated = v) } }
             SwitchRow("Monochrome emoji", "Make the emoji match the widget's text color", s.monoEmoji) { v -> update { it.copy(monoEmoji = v) } }
-        }
-
-        Section("Colors") {
-            PaletteRow(cfg.palette) { cfg = cfg.copy(palette = it) }
-            NumberSlider("Roundness", (cfg.roundness * 100).roundToInt(), 0..100) { cfg = cfg.copy(roundness = it / 100f) }
         }
 
         Section("Content") {

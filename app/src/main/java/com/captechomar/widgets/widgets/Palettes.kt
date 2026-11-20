@@ -48,11 +48,18 @@ object Palettes {
         val dark = isDark(context)
         if (id == "dynamic" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return dynamic(context, dark)
         val s = scheme(if (id == "dynamic") "FOREST" else id, dark)
+        // Text is drawn straight on the container, exactly like the Expressive Clock's dial, so the
+        // pair is surface / onSurface. The bar colour is the first accent that stays readable under that text.
+        val content = s.onSurface.toArgb()
+        val fill = listOf(s.primaryContainer, s.secondaryContainer, s.tertiaryContainer, s.surfaceContainerHighest)
+            .map { it.toArgb() }
+            .firstOrNull { androidx.core.graphics.ColorUtils.calculateContrast(content, it) >= 4.5 }
+            ?: s.surfaceContainerHighest.toArgb()
         return WidgetColors(
-            container = s.secondaryContainer.toArgb(),
+            container = s.surfaceContainerHigh.toArgb(),
             track = s.surfaceContainerLow.toArgb(),
-            fill = s.primaryContainer.toArgb(),
-            content = s.onPrimaryContainer.toArgb(),
+            fill = fill,
+            content = content,
             accent = s.tertiaryContainer.toArgb(),
             onAccent = s.onTertiaryContainer.toArgb(),
         )
