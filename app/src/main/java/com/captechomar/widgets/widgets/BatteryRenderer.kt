@@ -121,17 +121,27 @@ object BatteryRenderer {
 
         val fm = paint.fontMetrics
         val textRight = track.right - textMargin
-        // the figure and bolt are drawn in the bar's text colour when the bar reaches under them
-        val onBar = fillRight >= textRight - paint.measureText(text) / 2f
-        val textColor = if (onBar) col.onBar else col.content
-        paint.color = textColor
-        canvas.drawText(text, textRight, cy - (fm.ascent + fm.descent) / 2f, paint)
+        val textY = cy - (fm.ascent + fm.descent) / 2f
+        val boltSize = iconSize * 0.85f
+        val boltLeft = textRight - paint.measureText(text) - boltSize - trackH * 0.04f * scale
 
-        if (charging) {
-            val textLeft = textRight - paint.measureText(text)
-            val boltSize = iconSize * 0.85f
-            drawIcon(context, canvas, R.drawable.ic_bolt, textLeft - boltSize - trackH * 0.04f * scale, cy, boltSize, textColor)
+        // The figure (and bolt) change colour exactly where the bar ends, so a figure that straddles
+        // the edge stays readable on both halves.
+        fun drawLabel(color: Int) {
+            paint.color = color
+            canvas.drawText(text, textRight, textY, paint)
+            if (charging) drawIcon(context, canvas, R.drawable.ic_bolt, boltLeft, cy, boltSize, color)
         }
+        if (fillRight > track.left) {
+            canvas.save()
+            canvas.clipRect(track.left, track.top, fillRight, track.bottom)
+            drawLabel(col.onBar)
+            canvas.restore()
+        }
+        canvas.save()
+        canvas.clipRect(max(fillRight, track.left), track.top, track.right, track.bottom)
+        drawLabel(col.content)
+        canvas.restore()
     }
 
     private fun drawIcon(
