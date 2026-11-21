@@ -11,6 +11,8 @@ data class WidgetColors(
     val accent: Int = fill, val onAccent: Int = content,
     /** The battery bar and the text on it; the same as [fill]/[content] unless a palette sets them. */
     val bar: Int = fill, val onBar: Int = content,
+    /** The lighter tile on the weather card, and the bright colour for the city name. */
+    val tile: Int = container, val accentText: Int = bar,
 )
 
 /** Adds tertiary-style accents by turning the hue of the main colours, for palettes that have none of their own. */
@@ -66,6 +68,8 @@ object Palettes {
             onAccent = s.onTertiaryContainer.toArgb(),
             bar = s.primary.toArgb(),
             onBar = s.onPrimary.toArgb(),
+            tile = s.secondaryContainer.toArgb(),
+            accentText = s.primary.toArgb(),
         )
     }
 
@@ -77,6 +81,8 @@ object Palettes {
             content = c.getColor(android.R.color.system_accent1_100),
             accent = c.getColor(android.R.color.system_accent3_700),
             onAccent = c.getColor(android.R.color.system_accent3_100),
+            tile = c.getColor(android.R.color.system_accent2_700),
+            accentText = c.getColor(android.R.color.system_accent1_200),
         ) else WidgetColors(
             container = c.getColor(android.R.color.system_accent2_100),
             track = c.getColor(android.R.color.system_accent2_50),
@@ -84,5 +90,7 @@ object Palettes {
             content = c.getColor(android.R.color.system_accent1_900),
             accent = c.getColor(android.R.color.system_accent3_100),
             onAccent = c.getColor(android.R.color.system_accent3_900),
+            tile = c.getColor(android.R.color.system_accent2_200),
+            accentText = c.getColor(android.R.color.system_accent1_600),
         )
 }
