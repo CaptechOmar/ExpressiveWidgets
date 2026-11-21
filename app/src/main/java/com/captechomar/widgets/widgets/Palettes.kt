@@ -15,6 +15,8 @@ data class WidgetColors(
     val tile: Int = container, val accentText: Int = bar,
     /** Text colours of the weather card (onSurface / onSurfaceVariant) and its city name (primaryContainer). */
     val text: Int = content, val textVar: Int = content, val city: Int = accentText,
+    /** Text on the clock tile. */
+    val onTile: Int = text,
 )
 
 /** Adds tertiary-style accents by turning the hue of the main colours, for palettes that have none of their own. */
@@ -74,11 +76,13 @@ object Palettes {
             onAccent = s.onTertiaryContainer.toArgb(),
             bar = s.primary.toArgb(),
             onBar = s.onPrimary.toArgb(),
-            tile = s.secondaryContainer.toArgb(),
+            // like the savings emoji tile and pills: tertiary container with its own text colour
+            tile = s.tertiaryContainer.toArgb(),
+            onTile = s.onTertiaryContainer.toArgb(),
             accentText = s.primary.toArgb(),
             text = s.onSurface.toArgb(),
             textVar = s.onSurfaceVariant.toArgb(),
-            city = s.primaryContainer.toArgb(),
+            city = s.tertiaryContainer.toArgb(),
         )
     }
 
