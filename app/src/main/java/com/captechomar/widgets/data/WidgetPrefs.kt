@@ -35,6 +35,8 @@ data class WidgetConfig(
     val deviceOrder: List<String> = emptyList(),
     /** Icon per block: [TapAction.PHONE] or a device address. */
     val icons: Map<String, IconChoice> = emptyMap(),
+    /** The widget this config was loaded for (not saved); the drawing widget finds its strokes with it. */
+    val widgetId: Int = -1,
 )
 
 object WidgetPrefs {
@@ -94,6 +96,7 @@ object WidgetPrefs {
             manualDevices = sp.getBoolean("${widgetId}_manual", false),
             deviceOrder = readList(sp, "${widgetId}_order"),
             icons = readIcons(sp, widgetId),
+            widgetId = widgetId,
         )
     }
 
@@ -122,6 +125,7 @@ object WidgetPrefs {
     }
 
     fun delete(context: Context, widgetId: Int) {
+        DrawingStore.delete(context, widgetId)
         SavingsStore.deleteBackground(context, SavingsConfig.fromJson(sp(context).getString("${widgetId}_savings", null)).bgFile)
         sp(context).edit()
             .remove("${widgetId}_palette")

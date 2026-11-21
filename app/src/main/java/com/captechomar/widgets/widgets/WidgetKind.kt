@@ -140,7 +140,7 @@ object MusicKind : WidgetKind {
 }
 
 object WidgetKinds {
-    val all: List<WidgetKind> = listOf(BatteryKind, MusicKind, SavingsKind, WeatherKind)
+    val all: List<WidgetKind> = listOf(BatteryKind, MusicKind, SavingsKind, WeatherKind, DrawingKind)
 
     fun byProvider(className: String?): WidgetKind? = all.firstOrNull { it.providerClass.name == className }
 }
@@ -258,5 +258,29 @@ object WeatherKind : WidgetKind {
         val ink = Palettes.resolve(context, cfg.palette).onTile
         views.setTextViewTextSize(R.id.clock_time, TypedValue.COMPLEX_UNIT_DIP, 98f * f.k)
         views.setTextColor(R.id.clock_time, ink)
+    }
+}
+
+object DrawingKind : WidgetKind {
+    override val providerClass: Class<*> = DrawingWidgetProvider::class.java
+    override val iconRes = R.drawable.kind_drawing
+    override val title = "Drawing"
+    override val description = "A canvas to doodle on. Tap it to draw with your finger."
+    override val layoutRes = R.layout.widget_drawing
+    override val defaultConfig = WidgetConfig(roundness = 1f)
+
+    override fun render(context: Context, cfg: WidgetConfig, widthPx: Int, heightPx: Int): Bitmap =
+        DrawingRenderer.render(context, cfg, widthPx, heightPx)
+
+    override fun bindClicks(
+        context: Context, views: RemoteViews, widgetId: Int, cfg: WidgetConfig, widthDp: Float, heightDp: Float,
+    ) {
+        val draw = Intent(context, com.captechomar.widgets.ui.DrawActivity::class.java)
+            .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+        views.setOnClickPendingIntent(
+            R.id.widget_root,
+            PendingIntent.getActivity(context, widgetId * 10 + 6, draw, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
+        )
     }
 }

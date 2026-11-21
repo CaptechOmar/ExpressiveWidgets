@@ -33,6 +33,8 @@ class MusicWidgetProvider : BaseWidgetProvider(MusicKind)
 
 class SavingsWidgetProvider : BaseWidgetProvider(SavingsKind)
 
+class DrawingWidgetProvider : BaseWidgetProvider(DrawingKind)
+
 class WeatherWidgetProvider : BaseWidgetProvider(WeatherKind) {
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)

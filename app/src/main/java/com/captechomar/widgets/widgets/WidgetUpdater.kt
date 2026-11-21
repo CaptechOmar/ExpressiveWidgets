@@ -43,6 +43,12 @@ object WidgetUpdater {
         }
     }
 
+    /** Height divided by width of a placed widget. */
+    fun aspect(context: Context, widgetId: Int): Float {
+        val s = sizeOf(context, AppWidgetManager.getInstance(context.applicationContext), widgetId)
+        return (s.hDp / s.wDp).coerceIn(0.3f, 2f)
+    }
+
     private class Size(val wPx: Int, val hPx: Int, val wDp: Float, val hDp: Float)
 
     /** Widget size, with the bitmap size scaled down so it stays well under RemoteViews' memory limit. */
