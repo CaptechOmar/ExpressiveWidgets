@@ -32,8 +32,9 @@ import androidx.compose.ui.unit.dp
 import com.captechomar.widgets.data.TapAction
 
 /** Which apps the "open an app" list offers, and how the default reads. */
-enum class TapPick(val base: Intent?, val defaultText: String, val describeDefault: String, val openText: String) {
-    ANY(null, "Open this app (default)", "Opens this app", "Open an app…"),
+enum class TapPick(val base: Intent?, val defaultText: String, val describeDefault: String, val openText: String, val full: Boolean = false) {
+    ANY(null, "Open this app (default)", "Opens this app", "Open an app…", true),
+    WIDGET(null, "Open these settings (default)", "Opens these settings", "Open an app…", true),
     CLOCK(Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS), "Open the clock app (default)", "Opens your clock app", "Choose a clock app…"),
     CALENDAR(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR), "Open the calendar app (default)", "Opens your calendar app", "Choose a calendar app…"),
 }
@@ -106,7 +107,7 @@ fun TapActionEditor(action: TapAction, onChange: (TapAction) -> Unit, pick: TapP
                         error = null; stage = 0
                         launcher.launch(pickerFor(pick.base ?: Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)))
                     }
-                    if (pick == TapPick.ANY) {
+                    if (pick.full) {
                         Option("Open an activity…") { activityDialog = true }
                         Option("Run a shortcut…") {
                             error = null; stage = 1

@@ -16,11 +16,13 @@ data class WeatherConfig(
     /** What tapping the time and the date does. */
     val clockTap: TapAction = TapAction(),
     val dateTap: TapAction = TapAction(),
+    /** What tapping the rest of the widget does; the default opens these settings. */
+    val widgetTap: TapAction = TapAction(),
 ) {
     fun toJson(): String = JSONObject()
         .put("city", city).put("lat", lat).put("lon", lon).put("hasPlace", hasPlace)
         .put("useLocation", useLocation).put("imperial", imperial)
-        .put("clockTap", clockTap.toJson()).put("dateTap", dateTap.toJson()).toString()
+        .put("clockTap", clockTap.toJson()).put("dateTap", dateTap.toJson()).put("widgetTap", widgetTap.toJson()).toString()
 
     companion object {
         fun fromJson(json: String?): WeatherConfig {
@@ -33,6 +35,7 @@ data class WeatherConfig(
                     imperial = o.optBoolean("imperial"),
                     clockTap = o.optJSONObject("clockTap")?.let { TapAction.fromJson(it) } ?: TapAction(),
                     dateTap = o.optJSONObject("dateTap")?.let { TapAction.fromJson(it) } ?: TapAction(),
+                    widgetTap = o.optJSONObject("widgetTap")?.let { TapAction.fromJson(it) } ?: TapAction(),
                 )
             } catch (_: Throwable) {
                 WeatherConfig()

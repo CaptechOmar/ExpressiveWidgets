@@ -29,6 +29,8 @@ class WeatherRefreshActivity : Activity() {
             finish()
             return
         }
+        // this page has no screen, so it must never linger: it always closes within 5 seconds
+        window.decorView.postDelayed({ if (!isFinishing) finish() }, 5000)
         val cfg = WidgetPrefs.load(this, widgetId, WeatherKind.defaultConfig)
         Toast.makeText(this, if (cfg.weather.useLocation) "Updating location and weather…" else "Updating weather…", Toast.LENGTH_SHORT).show()
 
@@ -41,9 +43,9 @@ class WeatherRefreshActivity : Activity() {
         val provider = listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER, LocationManager.PASSIVE_PROVIDER)
             .firstOrNull { runCatching { lm.isProviderEnabled(it) }.getOrDefault(false) }
         if (provider != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // a fresh fix; if none arrives in time the last known one is used
+            // a fresh fix; if none arrives within 3 seconds the last known one is used
             lm.getCurrentLocation(provider, null, mainExecutor) { loc: Location? -> refresh(widgetId, loc) }
-            window.decorView.postDelayed({ refresh(widgetId, null) }, 8000)
+            window.decorView.postDelayed({ refresh(widgetId, null) }, 3000)
         } else {
             refresh(widgetId, null)
         }

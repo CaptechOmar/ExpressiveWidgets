@@ -202,7 +202,6 @@ object WeatherKind : WidgetKind {
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         val settings = Intent(context, com.captechomar.widgets.ui.WidgetConfigActivity::class.java)
             .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-        views.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, widgetId * 10 + 1, settings, flags))
 
         // the clock fills the tile drawn in the bitmap
         val f = WeatherRenderer.frame(widthDp, heightDp)
@@ -227,6 +226,7 @@ object WeatherKind : WidgetKind {
             }
             return PendingIntent.getActivity(context, widgetId * 10 + code, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags)
         }
+        views.setOnClickPendingIntent(R.id.widget_root, tapIntent(cfg.weather.widgetTap, settings, 1))
         val cx = tile.centerX()
         hit(
             R.id.clock_hit, R.id.btn_clock, RectF(cx - 128f * f.k, f.y(58f), cx + 128f * f.k, f.y(170f)),

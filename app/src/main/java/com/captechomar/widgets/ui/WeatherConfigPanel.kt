@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.withLink
 import androidx.core.content.ContextCompat
 import com.captechomar.widgets.data.Place
 import com.captechomar.widgets.data.WeatherConfig
@@ -65,6 +66,8 @@ fun WeatherConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
     }
 
     var version by remember { mutableStateOf(0) }
+    var permissionTick by remember { mutableStateOf(0) }
+    val backgroundLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionTick++ }
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<Place>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
@@ -167,10 +170,33 @@ fun WeatherConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
                     load(next)
                 } else locationPermission.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
             }
+            if (w.useLocation) {
+                val allTheTime = remember(permissionTick) {
+                    android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q ||
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+                }
+                val link = androidx.compose.ui.text.TextLinkStyles(
+                    androidx.compose.ui.text.SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
+                )
+                Text(
+                    if (allTheTime) androidx.compose.ui.text.AnnotatedString("The location also updates in the background.")
+                    else androidx.compose.ui.text.buildAnnotatedString {
+                        append("Tap the weather icon to update the location, or ")
+                        withLink(androidx.compose.ui.text.LinkAnnotation.Clickable("background", link) {
+                            backgroundLocation.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                        }) { append("give background permission") }
+                        append(".")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             ToggleRow("Fahrenheit and mph", "Show °F and miles per hour", w.imperial) { on -> update { it.copy(imperial = on) } }
         }
 
         Section("Taps") {
+            Text("Widget", style = MaterialTheme.typography.titleSmall)
+            TapActionEditor(w.widgetTap, { t -> update { it.copy(widgetTap = t) } }, TapPick.WIDGET)
             Text("Time", style = MaterialTheme.typography.titleSmall)
             TapActionEditor(w.clockTap, { t -> update { it.copy(clockTap = t) } }, TapPick.CLOCK)
             Text("Date", style = MaterialTheme.typography.titleSmall)
