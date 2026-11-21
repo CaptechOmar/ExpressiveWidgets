@@ -87,7 +87,7 @@ object WeatherRenderer {
         paint.color = col.track
         canvas.drawRoundRect(RectF(0f, 0f, W, H), outerR, outerR, paint)
         paint.color = col.tile
-        val tr = 58f * k * (0.35f + 0.65f * round)
+        val tr = 64f * k * (0.6f + 0.4f * round)
         canvas.drawRoundRect(f.rect(TILE), tr, tr, paint)
 
         val wc = cfg.weather
@@ -114,23 +114,23 @@ object WeatherRenderer {
         val place = wc.city.ifBlank { if (weather == null) "Set a city" else "" }
         val tp = TextPaint(paint)
         tp.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-        tp.textSize = 34f * k
-        val shown = TextUtils.ellipsize(place, tp, 270f * k, TextUtils.TruncateAt.END).toString()
-        text(canvas, paint, shown, mx, f.y(218f), 34f * k, col.city, 1f)
+        tp.textSize = 40f * k
+        val shown = TextUtils.ellipsize(place, tp, 262f * k, TextUtils.TruncateAt.END).toString()
+        text(canvas, paint, shown, mx, f.y(218f), 40f * k, col.city, 1f)
 
         // divider
         val dx = f.xr(651f)
-        paint.color = col.textVar
-        paint.alpha = 110
+        paint.color = col.city
+        paint.alpha = 255
         canvas.drawRoundRect(RectF(dx, f.y(38f), dx + 2f * k + 1f, f.y(246f)), k, k, paint)
         paint.alpha = 255
 
         // humidity
-        icon(context, canvas, R.drawable.wx_drop, f.xr(719f), f.y(90f), 50f * k, col.textVar, 1f)
+        icon(context, canvas, R.drawable.wx_drop, f.xr(719f), f.y(90f), 80f * k, col.textVar, 1f)
         text(canvas, paint, if (weather != null) "${weather.humidity}%" else "--", f.xr(770f), f.y(90f), 38f * k, col.text, 1f, Paint.Align.LEFT)
 
         // wind
-        icon(context, canvas, R.drawable.wx_wind, f.xr(717f), f.y(206f), 66f * k, col.textVar, 1f)
+        icon(context, canvas, R.drawable.wx_wind, f.xr(717f), f.y(206f), 76f * k, col.textVar, 1f)
         val speed = if (weather != null) (if (imperial) weather.windKmh * 0.621371 else weather.windKmh).roundToInt().toString() else "--"
         text(canvas, paint, speed, f.xr(804f), f.y(185f), 40f * k, col.text, 1f)
         text(canvas, paint, if (imperial) "mph" else "km/h", f.xr(807f), f.y(234f), 34f * k, col.text, 1f)
