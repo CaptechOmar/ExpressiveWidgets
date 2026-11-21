@@ -67,7 +67,11 @@ fun WeatherConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
 
     var version by remember { mutableStateOf(0) }
     var permissionTick by remember { mutableStateOf(0) }
-    val backgroundLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionTick++ }
+    val backgroundLocation = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        permissionTick++
+        // rebind the widget so its icon tap matches the new access
+        com.captechomar.widgets.widgets.WidgetUpdater.updateKind(context, com.captechomar.widgets.widgets.WeatherKind)
+    }
     var query by remember { mutableStateOf("") }
     var results by remember { mutableStateOf<List<Place>>(emptyList()) }
     var searching by remember { mutableStateOf(false) }
@@ -102,7 +106,7 @@ fun WeatherConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
             Image(bitmap = preview.asImageBitmap(), contentDescription = "Widget preview", modifier = Modifier.fillMaxSize())
             val k = maxWidth / WeatherRenderer.REF_W
             val tile = WeatherRenderer.TILE
-            val ink = androidx.compose.ui.graphics.Color(Palettes.resolve(context, cfg.palette).onTile)
+            val ink = androidx.compose.ui.graphics.Color(Palettes.resolve(context, cfg.palette).text)
             val now = remember { Date() }
             Column(
                 Modifier.offset(k * tile.left, k * tile.top).size(k * (tile.right - tile.left), k * (tile.bottom - tile.top)).padding(bottom = k * 60),
@@ -179,7 +183,7 @@ fun WeatherConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
                     androidx.compose.ui.text.SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold),
                 )
                 Text(
-                    if (allTheTime) androidx.compose.ui.text.AnnotatedString("The location also updates in the background.")
+                    if (allTheTime) androidx.compose.ui.text.AnnotatedString("The location updates in the background each hour and tap the weather icon for quick update.")
                     else androidx.compose.ui.text.buildAnnotatedString {
                         append("Tap the weather icon to update the location, or ")
                         withLink(androidx.compose.ui.text.LinkAnnotation.Clickable("background", link) {

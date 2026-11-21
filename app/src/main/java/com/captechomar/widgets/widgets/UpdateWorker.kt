@@ -14,7 +14,7 @@ class UpdateWorker(context: Context, params: WorkerParameters) : Worker(context,
     override fun doWork(): Result {
         WeatherWidgetProvider.scheduleDateChange(applicationContext)
         try {
-            WeatherRefresh.all(applicationContext, 25 * 60 * 1000L)
+            WeatherRefresh.all(applicationContext, 55 * 60 * 1000L)
         } catch (_: Throwable) {
         }
         WidgetUpdater.updateAll(applicationContext)

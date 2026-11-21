@@ -73,6 +73,32 @@ object WeatherStore {
         emptyList()
     }
 
+    /** True once "Allow all the time" is granted (always true before Android 10, which has no such split). */
+    fun hasBackgroundLocation(context: Context): Boolean =
+        android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.Q ||
+            context.checkSelfPermission(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    /** A fresh fix when the app may read location in the background (waits up to 4 seconds), else the last known one. */
+    @SuppressLint("MissingPermission")
+    private fun freshLocation(context: Context): Pair<Double, Double>? {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R || !hasBackgroundLocation(context)) return null
+        return try {
+            val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+            val provider = listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER).firstOrNull { lm.isProviderEnabled(it) }
+                ?: return null
+            val latch = java.util.concurrent.CountDownLatch(1)
+            var result: Pair<Double, Double>? = null
+            lm.getCurrentLocation(provider, null, java.util.concurrent.Executors.newSingleThreadExecutor()) { loc ->
+                if (loc != null) result = loc.latitude to loc.longitude
+                latch.countDown()
+            }
+            latch.await(4, java.util.concurrent.TimeUnit.SECONDS)
+            result
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     /** The last known device position, if the location permission is granted. */
     @SuppressLint("MissingPermission")
     fun deviceLocation(context: Context): Pair<Double, Double>? = try {
@@ -99,7 +125,7 @@ object WeatherStore {
     fun refresh(context: Context, cfg: WeatherConfig, maxAgeMs: Long = 0L, fix: Pair<Double, Double>? = null): WeatherConfig {
         var place = cfg
         if (cfg.useLocation) {
-            (fix ?: deviceLocation(context))?.let { (la, lo) ->
+            (fix ?: freshLocation(context) ?: deviceLocation(context))?.let { (la, lo) ->
                 val name = placeName(context, la, lo).ifBlank { cfg.city.ifBlank { "My location" } }
                 place = cfg.copy(lat = la, lon = lo, hasPlace = true, city = name)
             }

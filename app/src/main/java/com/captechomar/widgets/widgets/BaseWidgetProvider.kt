@@ -43,6 +43,10 @@ class WeatherWidgetProvider : BaseWidgetProvider(WeatherKind) {
     override fun onReceive(context: Context, intent: android.content.Intent) {
         super.onReceive(context, intent)
         // the date is drawn into the bitmap, so redraw once the day changes
+        if (intent.action == ACTION_REFRESH) {
+            android.widget.Toast.makeText(context, "Updating weather…", android.widget.Toast.LENGTH_SHORT).show()
+            WeatherRefresh.enqueue(context)
+        }
         if (intent.action == ACTION_DATE_TICK) {
             WidgetUpdater.updateKind(context, WeatherKind)
             scheduleDateChange(context)
@@ -50,6 +54,7 @@ class WeatherWidgetProvider : BaseWidgetProvider(WeatherKind) {
     }
 
     companion object {
+        const val ACTION_REFRESH = "com.captechomar.widgets.WEATHER_REFRESH"
         private const val ACTION_DATE_TICK = "com.captechomar.widgets.DATE_TICK"
 
         fun scheduleDateChange(context: Context) {

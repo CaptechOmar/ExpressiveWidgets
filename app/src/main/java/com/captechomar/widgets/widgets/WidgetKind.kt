@@ -244,10 +244,18 @@ object WeatherKind : WidgetKind {
         val refresh = Intent(context, com.captechomar.widgets.ui.WeatherRefreshActivity::class.java)
             .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
-        hit(R.id.icon_hit, R.id.btn_icon, icon, PendingIntent.getActivity(context, widgetId * 10 + 4, refresh, flags))
+        // with all-the-time location the refresh runs in the background; otherwise a screenless page
+        // opens for a moment so the app is in the foreground while it reads the location
+        val iconTap = if (WeatherStore.hasBackgroundLocation(context)) {
+            PendingIntent.getBroadcast(
+                context, widgetId * 10 + 5,
+                Intent(context, WeatherWidgetProvider::class.java).setAction(WeatherWidgetProvider.ACTION_REFRESH), flags,
+            )
+        } else PendingIntent.getActivity(context, widgetId * 10 + 4, refresh, flags)
+        hit(R.id.icon_hit, R.id.btn_icon, icon, iconTap)
 
         views.setViewPadding(R.id.clock_area, px(tile.left), px(tile.top), px(widthDp - tile.right), px(heightDp - tile.bottom + 60f * f.k))
-        val ink = Palettes.resolve(context, cfg.palette).onTile
+        val ink = Palettes.resolve(context, cfg.palette).text
         views.setTextViewTextSize(R.id.clock_time, TypedValue.COMPLEX_UNIT_DIP, 98f * f.k)
         views.setTextColor(R.id.clock_time, ink)
     }
