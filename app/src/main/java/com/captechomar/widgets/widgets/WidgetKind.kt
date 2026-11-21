@@ -4,6 +4,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.RectF
 import android.os.Build
 import android.util.TypedValue
 import android.view.View
@@ -12,6 +13,7 @@ import androidx.annotation.LayoutRes
 import com.captechomar.widgets.R
 import com.captechomar.widgets.data.BatteryReader
 import com.captechomar.widgets.data.TapAction
+import com.captechomar.widgets.data.WeatherStore
 import com.captechomar.widgets.data.WidgetConfig
 import com.captechomar.widgets.music.MusicStore
 import com.captechomar.widgets.ui.MainActivity
@@ -207,6 +209,43 @@ object WeatherKind : WidgetKind {
         val tile = f.tile()
         val d = context.resources.displayMetrics.density
         fun px(dp: Float) = (dp * d).toInt().coerceAtLeast(0)
+        // tap targets with the pressed highlight, laid over the time, the date and the condition icon
+        fun hit(container: Int, button: Int, r: RectF, pi: PendingIntent?) {
+            if (pi == null) {
+                views.setViewVisibility(container, android.view.View.GONE)
+                return
+            }
+            views.setViewVisibility(container, android.view.View.VISIBLE)
+            views.setViewPadding(container, px(r.left), px(r.top), px(widthDp - r.right), px(heightDp - r.bottom))
+            views.setOnClickPendingIntent(button, pi)
+        }
+        fun tapIntent(action: TapAction, fallback: Intent, code: Int): PendingIntent? {
+            val intent = when (action.type) {
+                TapAction.Type.NONE -> return null
+                TapAction.Type.INTENT -> action.intent() ?: fallback
+                TapAction.Type.DEFAULT -> fallback
+            }
+            return PendingIntent.getActivity(context, widgetId * 10 + code, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags)
+        }
+        val cx = tile.centerX()
+        hit(
+            R.id.clock_hit, R.id.btn_clock, RectF(cx - 128f * f.k, f.y(58f), cx + 128f * f.k, f.y(170f)),
+            tapIntent(cfg.weather.clockTap, Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS), 2),
+        )
+        hit(
+            R.id.date_hit, R.id.btn_date, RectF(cx - 125f * f.k, f.y(174f), cx + 125f * f.k, f.y(232f)),
+            tapIntent(
+                cfg.weather.dateTap,
+                Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CALENDAR), 3,
+            ),
+        )
+        val icon = WeatherRenderer.iconBounds(f, WeatherRenderer.tempText(cfg.weather, WeatherStore.cached(context, cfg.weather)))
+        icon.inset(-8f * f.k, -8f * f.k)
+        val refresh = Intent(context, com.captechomar.widgets.ui.WeatherRefreshActivity::class.java)
+            .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+        hit(R.id.icon_hit, R.id.btn_icon, icon, PendingIntent.getActivity(context, widgetId * 10 + 4, refresh, flags))
+
         views.setViewPadding(R.id.clock_area, px(tile.left), px(tile.top), px(widthDp - tile.right), px(heightDp - tile.bottom + 60f * f.k))
         val ink = Palettes.resolve(context, cfg.palette).onTile
         views.setTextViewTextSize(R.id.clock_time, TypedValue.COMPLEX_UNIT_DIP, 98f * f.k)

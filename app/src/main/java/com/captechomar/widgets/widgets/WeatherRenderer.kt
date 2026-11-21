@@ -70,6 +70,25 @@ object WeatherRenderer {
         return "${java.text.SimpleDateFormat("EEE", loc).format(d)} $day$suffix ${java.text.SimpleDateFormat("MMM", loc).format(d)}"
     }
 
+    fun tempText(cfg: com.captechomar.widgets.data.WeatherConfig, weather: Weather?): String {
+        if (weather == null) return "--°"
+        val c = weather.tempC
+        return "${(if (cfg.imperial) c * 9 / 5 + 32 else c).roundToInt()}°"
+    }
+
+    /** Where the condition icon is drawn for the given temperature text, so a tap target can sit over it. */
+    fun iconBounds(f: Frame, temp: String): RectF {
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        p.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+        p.textSize = 68f * f.k
+        val iconD = 76f * f.k
+        val gap = 12f * f.k
+        val mx = f.xm(if (f.compact) 590f else 494f)
+        val cx = mx - (p.measureText(temp) + gap + iconD) / 2f + p.measureText(temp) + gap + iconD / 2f
+        val cy = f.y(138f)
+        return RectF(cx - iconD / 2f, cy - iconD / 2f, cx + iconD / 2f, cy + iconD / 2f)
+    }
+
     private val bitmaps = HashMap<Int, Bitmap>()
 
     /** Weather Now icons (Grabster, CC BY-SA 4.0). Index 1 is the day variant and 0 the night one. */

@@ -112,6 +112,11 @@ fun WeatherConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
             }
         }
 
+        Section("Colors") {
+            PaletteRow(cfg.palette) { cfg = cfg.copy(palette = it) }
+            NumberSlider("Roundness", (cfg.roundness * 100).roundToInt(), 0..100) { cfg = cfg.copy(roundness = it / 100f) }
+        }
+
         Section("Location") {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
@@ -165,9 +170,15 @@ fun WeatherConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
             ToggleRow("Fahrenheit and mph", "Show °F and miles per hour", w.imperial) { on -> update { it.copy(imperial = on) } }
         }
 
-        Section("Colors") {
-            PaletteRow(cfg.palette) { cfg = cfg.copy(palette = it) }
-            NumberSlider("Roundness", (cfg.roundness * 100).roundToInt(), 0..100) { cfg = cfg.copy(roundness = it / 100f) }
+        Section("Taps") {
+            Text("Time", style = MaterialTheme.typography.titleSmall)
+            TapActionEditor(w.clockTap, { t -> update { it.copy(clockTap = t) } }, TapPick.CLOCK)
+            Text("Date", style = MaterialTheme.typography.titleSmall)
+            TapActionEditor(w.dateTap, { t -> update { it.copy(dateTap = t) } }, TapPick.CALENDAR)
+            Text(
+                "Tapping the weather icon refreshes the weather and, if \"Use my location\" is on, your location.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         Button(

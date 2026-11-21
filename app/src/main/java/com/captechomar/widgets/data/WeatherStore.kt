@@ -96,10 +96,10 @@ object WeatherStore {
      * (the device position is remembered so it still works when the app is in the background).
      * Blocking: call from a background thread.
      */
-    fun refresh(context: Context, cfg: WeatherConfig, maxAgeMs: Long = 0L): WeatherConfig {
+    fun refresh(context: Context, cfg: WeatherConfig, maxAgeMs: Long = 0L, fix: Pair<Double, Double>? = null): WeatherConfig {
         var place = cfg
         if (cfg.useLocation) {
-            deviceLocation(context)?.let { (la, lo) ->
+            (fix ?: deviceLocation(context))?.let { (la, lo) ->
                 val name = placeName(context, la, lo).ifBlank { cfg.city.ifBlank { "My location" } }
                 place = cfg.copy(lat = la, lon = lo, hasPlace = true, city = name)
             }

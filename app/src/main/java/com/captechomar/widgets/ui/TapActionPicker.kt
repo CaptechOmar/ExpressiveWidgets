@@ -31,9 +31,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.captechomar.widgets.data.TapAction
 
+/** Which apps the "open an app" list offers, and how the default reads. */
+enum class TapPick(val base: Intent?, val defaultText: String, val describeDefault: String, val openText: String) {
+    ANY(null, "Open this app (default)", "Opens this app", "Open an app…"),
+    CLOCK(Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS), "Open the clock app (default)", "Opens your clock app", "Choose a clock app…"),
+    CALENDAR(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR), "Open the calendar app (default)", "Opens your calendar app", "Choose a calendar app…"),
+}
+
 /** Shows what a block does when tapped and lets the user change it: default, nothing, an app, an activity or a shortcut. */
 @Composable
-fun TapActionEditor(action: TapAction, onChange: (TapAction) -> Unit) {
+fun TapActionEditor(action: TapAction, onChange: (TapAction) -> Unit, pick: TapPick = TapPick.ANY) {
     val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     var activityDialog by remember { mutableStateOf(false) }
@@ -50,7 +57,7 @@ fun TapActionEditor(action: TapAction, onChange: (TapAction) -> Unit) {
         when (stage) {
             0 -> {
                 val component = data.component ?: return@rememberLauncherForActivityResult
-                val launch = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setComponent(component)
+                val launch = (pick.base?.let { Intent(it) } ?: Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)).setComponent(component)
                 onChange(TapAction.intent(launch, labelOf(context, component)))
                 menu = false
             }
@@ -82,7 +89,7 @@ fun TapActionEditor(action: TapAction, onChange: (TapAction) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(describe(action), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        Text(describe(action, pick), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
         FilledTonalButton(onClick = { menu = true }) { Text("Change") }
     }
     error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -93,16 +100,18 @@ fun TapActionEditor(action: TapAction, onChange: (TapAction) -> Unit) {
             title = { Text("When tapped") },
             text = {
                 Column {
-                    Option("Open this app (default)") { onChange(TapAction()); menu = false }
+                    Option(pick.defaultText) { onChange(TapAction()); menu = false }
                     Option("Do nothing") { onChange(TapAction(TapAction.Type.NONE)); menu = false }
-                    Option("Open an app…") {
+                    Option(pick.openText) {
                         error = null; stage = 0
-                        launcher.launch(pickerFor(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)))
+                        launcher.launch(pickerFor(pick.base ?: Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)))
                     }
-                    Option("Open an activity…") { activityDialog = true }
-                    Option("Run a shortcut…") {
-                        error = null; stage = 1
-                        launcher.launch(pickerFor(Intent(Intent.ACTION_CREATE_SHORTCUT)))
+                    if (pick == TapPick.ANY) {
+                        Option("Open an activity…") { activityDialog = true }
+                        Option("Run a shortcut…") {
+                            error = null; stage = 1
+                            launcher.launch(pickerFor(Intent(Intent.ACTION_CREATE_SHORTCUT)))
+                        }
                     }
                 }
             },
@@ -142,8 +151,8 @@ private fun Option(text: String, onClick: () -> Unit) {
     Text(text, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 12.dp))
 }
 
-private fun describe(action: TapAction) = when (action.type) {
-    TapAction.Type.DEFAULT -> "Opens this app"
+private fun describe(action: TapAction, pick: TapPick) = when (action.type) {
+    TapAction.Type.DEFAULT -> pick.describeDefault
     TapAction.Type.NONE -> "Does nothing"
     TapAction.Type.INTENT -> action.label.ifBlank { "Custom" }
 }

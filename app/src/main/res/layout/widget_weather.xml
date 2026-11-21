@@ -35,4 +35,40 @@
                 android:textStyle="bold" />
         </LinearLayout>
     </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/clock_hit"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <ImageButton
+            android:id="@+id/btn_clock"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/widget_press_round"
+            android:contentDescription="Time" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/date_hit"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <ImageButton
+            android:id="@+id/btn_date"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/widget_press_round"
+            android:contentDescription="Date" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/icon_hit"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <ImageButton
+            android:id="@+id/btn_icon"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/widget_press_round"
+            android:contentDescription="Update weather" />
+    </FrameLayout>
 </FrameLayout>
