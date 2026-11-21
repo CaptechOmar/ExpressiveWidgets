@@ -255,7 +255,7 @@ object WeatherKind : WidgetKind {
         hit(R.id.icon_hit, R.id.btn_icon, icon, iconTap)
 
         views.setViewPadding(R.id.clock_area, px(tile.left), px(tile.top), px(widthDp - tile.right), px(heightDp - tile.bottom + 60f * f.k))
-        val ink = Palettes.resolve(context, cfg.palette).text
+        val ink = Palettes.resolve(context, cfg.palette).onTile
         views.setTextViewTextSize(R.id.clock_time, TypedValue.COMPLEX_UNIT_DIP, 98f * f.k)
         views.setTextColor(R.id.clock_time, ink)
     }

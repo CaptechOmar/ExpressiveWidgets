@@ -57,7 +57,7 @@ object Palettes {
         if (id == "dynamic" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             // the weather card's text and city colours come from the same scheme the app itself is drawn with
             val s = if (dark) androidx.compose.material3.dynamicDarkColorScheme(context) else androidx.compose.material3.dynamicLightColorScheme(context)
-            return dynamic(context, dark).copy(text = s.onSurface.toArgb(), textVar = s.onSurfaceVariant.toArgb(), city = s.primaryContainer.toArgb())
+            return dynamic(context, dark).copy(onTile = s.onSurface.toArgb(), text = s.onSurface.toArgb(), textVar = s.onSurfaceVariant.toArgb(), city = s.primaryContainer.toArgb())
         }
         val s = scheme(if (id == "dynamic") "FOREST" else id, dark)
         // Text is drawn straight on the container, exactly like the Expressive Clock's dial, so the

@@ -106,7 +106,7 @@ fun WeatherConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
             Image(bitmap = preview.asImageBitmap(), contentDescription = "Widget preview", modifier = Modifier.fillMaxSize())
             val k = maxWidth / WeatherRenderer.REF_W
             val tile = WeatherRenderer.TILE
-            val ink = androidx.compose.ui.graphics.Color(Palettes.resolve(context, cfg.palette).text)
+            val ink = androidx.compose.ui.graphics.Color(Palettes.resolve(context, cfg.palette).onTile)
             val now = remember { Date() }
             Column(
                 Modifier.offset(k * tile.left, k * tile.top).size(k * (tile.right - tile.left), k * (tile.bottom - tile.top)).padding(bottom = k * 60),

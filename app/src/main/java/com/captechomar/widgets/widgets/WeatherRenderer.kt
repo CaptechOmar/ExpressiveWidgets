@@ -133,7 +133,7 @@ object WeatherRenderer {
         val tr = 64f * k * (0.6f + 0.4f * round)
         val tile = f.tile()
         canvas.drawRoundRect(tile, tr, tr, paint)
-        text(canvas, paint, dateText(), tile.centerX(), f.y(201f), 37.5f * k, col.text, 1f)
+        text(canvas, paint, dateText(), tile.centerX(), f.y(201f), 37.5f * k, col.onTile, 1f)
 
         val wc = cfg.weather
         val imperial = wc.imperial
