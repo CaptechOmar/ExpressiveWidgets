@@ -58,7 +58,11 @@ fun TapActionEditor(action: TapAction, onChange: (TapAction) -> Unit, pick: TapP
         when (stage) {
             0 -> {
                 val component = data.component ?: return@rememberLauncherForActivityResult
-                val launch = (pick.base?.let { Intent(it) } ?: Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)).setComponent(component)
+                var launch = (pick.base?.let { Intent(it) } ?: Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)).setComponent(component)
+                // an app that lists the clock/calendar screen but won't start it from a widget gets its normal launch screen
+                if (pick.base != null && launch.resolveActivity(context.packageManager) == null) {
+                    context.packageManager.getLaunchIntentForPackage(component.packageName)?.let { launch = it }
+                }
                 onChange(TapAction.intent(launch, labelOf(context, component)))
                 menu = false
             }

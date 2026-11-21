@@ -221,7 +221,7 @@ object WeatherKind : WidgetKind {
         fun tapIntent(action: TapAction, fallback: Intent, code: Int): PendingIntent? {
             val intent = when (action.type) {
                 TapAction.Type.NONE -> return null
-                TapAction.Type.INTENT -> action.intent() ?: fallback
+                TapAction.Type.INTENT -> action.intent()?.let { openable(context, it) } ?: fallback
                 TapAction.Type.DEFAULT -> fallback
             }
             return PendingIntent.getActivity(context, widgetId * 10 + code, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags)
@@ -283,4 +283,20 @@ object DrawingKind : WidgetKind {
             PendingIntent.getActivity(context, widgetId * 10 + 6, draw, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
         )
     }
+}
+
+/**
+ * An app picked for a block is opened on the screen asked for (the alarms, the calendar). Some apps, Samsung's clock
+ * for one, list an activity for that but refuse to start it from a widget, so when the intent can't be resolved the
+ * app's normal launch screen is used instead and the tap still does something.
+ */
+internal fun openable(context: Context, intent: Intent): Intent {
+    val pkg = intent.component?.packageName ?: return intent
+    if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_LAUNCHER)) return intent
+    val ok = try {
+        intent.resolveActivity(context.packageManager) != null
+    } catch (_: Throwable) {
+        false
+    }
+    return if (ok) intent else context.packageManager.getLaunchIntentForPackage(pkg) ?: intent
 }
