@@ -102,13 +102,12 @@ fun WeatherConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
             val ink = androidx.compose.ui.graphics.Color(Palettes.resolve(context, cfg.palette).text)
             val now = remember { Date() }
             Column(
-                Modifier.offset(k * tile.left, k * tile.top).size(k * (tile.right - tile.left), k * (tile.bottom - tile.top)),
+                Modifier.offset(k * tile.left, k * tile.top).size(k * (tile.right - tile.left), k * (tile.bottom - tile.top)).padding(bottom = k * 60),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 with(LocalDensity.current) {
                     Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(now), color = ink, fontSize = (k * 98).toSp(), style = MaterialTheme.typography.titleLarge.copy(fontSize = (k * 98).toSp(), lineHeight = (k * 106).toSp()))
-                    Text(SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(now), color = ink, style = MaterialTheme.typography.titleMedium.copy(fontSize = (k * 34).toSp()))
                 }
             }
         }

@@ -33,17 +33,6 @@
                 android:includeFontPadding="false"
                 android:singleLine="true"
                 android:textStyle="bold" />
-
-            <TextClock
-                android:id="@+id/clock_date"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-medium"
-                android:format12Hour="EEE d MMM"
-                android:format24Hour="EEE d MMM"
-                android:includeFontPadding="false"
-                android:singleLine="true"
-                android:textStyle="bold" />
         </LinearLayout>
     </FrameLayout>
 </FrameLayout>

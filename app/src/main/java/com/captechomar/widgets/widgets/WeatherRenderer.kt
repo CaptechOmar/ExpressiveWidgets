@@ -27,23 +27,47 @@ object WeatherRenderer {
     const val REF_W = 960f
     const val REF_H = 284f
 
-    /** The clock tile on the reference card: left, top, right, bottom. */
+    /** The clock tile on the full reference card: left, top, right, bottom. */
     val TILE = RectF(22f, 23f, 316f, 261f)
 
-    class Frame(val k: Float, val oy: Float, private val spare: Float) {
+    /** On a narrow widget the humidity and wind column is dropped and the tile grows. */
+    private val TILE_COMPACT = RectF(22f, 23f, 387f, 261f)
+    private const val COMPACT_W = 794f
+    private const val COMPACT_BELOW_ASPECT = 3.1f
+
+    class Frame(val k: Float, val oy: Float, private val spare: Float, val compact: Boolean) {
         /** Left-aligned group (the tile). */
         fun x(v: Float) = v * k
         /** The "Currently" group, pushed right by part of the spare width. */
-        fun xm(v: Float) = v * k + spare * 0.4f
+        fun xm(v: Float) = v * k + spare * (if (compact) 0.5f else 0.4f)
         /** The divider and the humidity / wind group. */
         fun xr(v: Float) = v * k + spare * 0.85f
         fun y(v: Float) = oy + v * k
         fun rect(r: RectF) = RectF(x(r.left), y(r.top), x(r.right), y(r.bottom))
+        fun tile() = rect(if (compact) TILE_COMPACT else TILE)
     }
 
     fun frame(w: Float, h: Float): Frame {
-        val k = min(w / REF_W, h / REF_H)
-        return Frame(k, (h - REF_H * k) / 2f, max(0f, w - REF_W * k))
+        val compact = w / h < COMPACT_BELOW_ASPECT
+        val refW = if (compact) COMPACT_W else REF_W
+        val k = min(w / refW, h / REF_H)
+        return Frame(k, (h - REF_H * k) / 2f, max(0f, w - refW * k), compact)
+    }
+
+    /** "Sat 21st Nov"; the ordinal suffix is English only. */
+    private fun dateText(): String {
+        val now = java.util.Calendar.getInstance()
+        val loc = java.util.Locale.getDefault()
+        val day = now.get(java.util.Calendar.DAY_OF_MONTH)
+        val suffix = if (loc.language != "en") "" else when {
+            day % 100 in 11..13 -> "th"
+            day % 10 == 1 -> "st"
+            day % 10 == 2 -> "nd"
+            day % 10 == 3 -> "rd"
+            else -> "th"
+        }
+        val d = now.time
+        return "${java.text.SimpleDateFormat("EEE", loc).format(d)} $day$suffix ${java.text.SimpleDateFormat("MMM", loc).format(d)}"
     }
 
     private val bitmaps = HashMap<Int, Bitmap>()
@@ -88,14 +112,16 @@ object WeatherRenderer {
         canvas.drawRoundRect(RectF(0f, 0f, W, H), outerR, outerR, paint)
         paint.color = col.tile
         val tr = 64f * k * (0.6f + 0.4f * round)
-        canvas.drawRoundRect(f.rect(TILE), tr, tr, paint)
+        val tile = f.tile()
+        canvas.drawRoundRect(tile, tr, tr, paint)
+        text(canvas, paint, dateText(), tile.centerX(), f.y(201f), 37.5f * k, col.text, 1f)
 
         val wc = cfg.weather
         val imperial = wc.imperial
         fun temp(c: Double) = "${(if (imperial) c * 9 / 5 + 32 else c).roundToInt()}°"
 
         // current conditions
-        val mx = f.xm(494f)
+        val mx = f.xm(if (f.compact) 590f else 494f)
         text(canvas, paint, "Currently", mx, f.y(66f), 42f * k, col.textVar, 1f)
         val tempStr = if (weather != null) temp(weather.tempC) else "--°"
         paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
@@ -117,6 +143,8 @@ object WeatherRenderer {
         tp.textSize = 40f * k
         val shown = TextUtils.ellipsize(place, tp, 262f * k, TextUtils.TruncateAt.END).toString()
         text(canvas, paint, shown, mx, f.y(218f), 40f * k, col.city, 1f)
+
+        if (f.compact) return bmp
 
         // divider
         val dx = f.xr(651f)

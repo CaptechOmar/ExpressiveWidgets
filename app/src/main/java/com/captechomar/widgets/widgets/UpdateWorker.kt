@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit
 class UpdateWorker(context: Context, params: WorkerParameters) : Worker(context, params) {
 
     override fun doWork(): Result {
+        WeatherWidgetProvider.scheduleDateChange(applicationContext)
         try {
             WeatherRefresh.all(applicationContext, 25 * 60 * 1000L)
         } catch (_: Throwable) {
