@@ -83,11 +83,12 @@ object WeatherRenderer {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
         // dark card with a lighter clock tile on it
-        val outerR = H * 0.22f * (0.2f + 0.8f * round)
+        val outerR = H * 0.3f * (0.25f + 0.75f * round)
         paint.color = col.track
         canvas.drawRoundRect(RectF(0f, 0f, W, H), outerR, outerR, paint)
         paint.color = col.tile
-        canvas.drawPath(squircle(f.rect(TILE), 56f * k * (0.6f + 0.4f * round)), paint)
+        val tr = 64f * k * (0.6f + 0.4f * round)
+        canvas.drawRoundRect(f.rect(TILE), tr, tr, paint)
 
         val wc = cfg.weather
         val imperial = wc.imperial
@@ -135,24 +136,6 @@ object WeatherRenderer {
         text(canvas, paint, if (imperial) "mph" else "km/h", f.xr(807f), f.y(234f), 34f * k, col.text, 1f)
         compass(context, canvas, paint, f.xr(874f), f.y(206f), 22f * k, weather?.windDir, col.text)
         return bmp
-    }
-
-    /** A rounded rectangle with continuous (squircle) corners: the curve starts further along each edge. */
-    private fun squircle(r: RectF, radius: Float): android.graphics.Path {
-        val d = min(radius * 1.55f, min(r.width(), r.height()) / 2f)
-        val c = d * 0.3f
-        return android.graphics.Path().apply {
-            moveTo(r.left + d, r.top)
-            lineTo(r.right - d, r.top)
-            cubicTo(r.right - c, r.top, r.right, r.top + c, r.right, r.top + d)
-            lineTo(r.right, r.bottom - d)
-            cubicTo(r.right, r.bottom - c, r.right - c, r.bottom, r.right - d, r.bottom)
-            lineTo(r.left + d, r.bottom)
-            cubicTo(r.left + c, r.bottom, r.left, r.bottom - c, r.left, r.bottom - d)
-            lineTo(r.left, r.top + d)
-            cubicTo(r.left, r.top + c, r.left + c, r.top, r.left + d, r.top)
-            close()
-        }
     }
 
     private fun text(
