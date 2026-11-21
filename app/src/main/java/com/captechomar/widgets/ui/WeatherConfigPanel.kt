@@ -99,7 +99,7 @@ fun WeatherConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
             Image(bitmap = preview.asImageBitmap(), contentDescription = "Widget preview", modifier = Modifier.fillMaxSize())
             val k = maxWidth / WeatherRenderer.REF_W
             val tile = WeatherRenderer.TILE
-            val ink = androidx.compose.ui.graphics.Color(Palettes.resolve(context, cfg.palette).content)
+            val ink = androidx.compose.ui.graphics.Color(Palettes.resolve(context, cfg.palette).text)
             val now = remember { Date() }
             Column(
                 Modifier.offset(k * tile.left, k * tile.top).size(k * (tile.right - tile.left), k * (tile.bottom - tile.top)),
@@ -107,8 +107,8 @@ fun WeatherConfigPanel(widgetId: Int, kind: WidgetKind, saveLabel: String, onSav
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 with(LocalDensity.current) {
-                    Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(now), color = ink, fontSize = (k * 92).toSp(), style = MaterialTheme.typography.titleLarge.copy(fontSize = (k * 92).toSp(), lineHeight = (k * 100).toSp()))
-                    Text(SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(now), color = ink, style = MaterialTheme.typography.titleMedium.copy(fontSize = (k * 32).toSp()))
+                    Text(SimpleDateFormat("HH:mm", Locale.getDefault()).format(now), color = ink, fontSize = (k * 98).toSp(), style = MaterialTheme.typography.titleLarge.copy(fontSize = (k * 98).toSp(), lineHeight = (k * 106).toSp()))
+                    Text(SimpleDateFormat("EEE d MMM", Locale.getDefault()).format(now), color = ink, style = MaterialTheme.typography.titleMedium.copy(fontSize = (k * 34).toSp()))
                 }
             }
         }

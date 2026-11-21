@@ -19,16 +19,16 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Draws the weather card. Everything is laid out on a 1080 x 328 reference card. Sizes scale with the widget's
+ * Draws the weather card. Everything is laid out on a 960 x 284 reference card. Sizes scale with the widget's
  * height; on a wider widget the spare width goes into the gaps between the three groups (clock, weather, humidity
  * and wind) so nothing gets squeezed. The clock tile (a live TextClock laid over the bitmap) is placed from the same numbers.
  */
 object WeatherRenderer {
-    const val REF_W = 1080f
-    const val REF_H = 328f
+    const val REF_W = 960f
+    const val REF_H = 284f
 
     /** The clock tile on the reference card: left, top, right, bottom. */
-    val TILE = RectF(85f, 45f, 385f, 283f)
+    val TILE = RectF(22f, 23f, 316f, 261f)
 
     class Frame(val k: Float, val oy: Float, private val spare: Float) {
         /** Left-aligned group (the tile). */
@@ -95,46 +95,46 @@ object WeatherRenderer {
         fun temp(c: Double) = "${(if (imperial) c * 9 / 5 + 32 else c).roundToInt()}°"
 
         // current conditions
-        val mx = f.xm(560f)
-        text(canvas, paint, "Currently", mx, f.y(90f), 40f * k, col.content, 0.7f)
+        val mx = f.xm(494f)
+        text(canvas, paint, "Currently", mx, f.y(66f), 42f * k, col.textVar, 1f)
         val tempStr = if (weather != null) temp(weather.tempC) else "--°"
         paint.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-        paint.textSize = 76f * k
+        paint.textSize = 68f * k
         val tw = paint.measureText(tempStr)
-        val iconD = 84f * k
-        val gap = 14f * k
+        val iconD = 76f * k
+        val gap = 12f * k
         val startX = mx - (tw + gap + iconD) / 2f
-        text(canvas, paint, tempStr, startX, f.y(168f), 76f * k, col.content, 1f, Paint.Align.LEFT)
+        text(canvas, paint, tempStr, startX, f.y(140f), 68f * k, col.text, 1f, Paint.Align.LEFT)
         if (weather != null) {
             val src = bitmap(context, iconFor(weather.code, weather.isDay))
             val cx = startX + tw + gap + iconD / 2f
-            val cy = f.y(162f)
+            val cy = f.y(138f)
             canvas.drawBitmap(src, null, RectF(cx - iconD / 2f, cy - iconD / 2f, cx + iconD / 2f, cy + iconD / 2f), paint)
         }
         val place = wc.city.ifBlank { if (weather == null) "Set a city" else "" }
         val tp = TextPaint(paint)
         tp.typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
-        tp.textSize = 36f * k
-        val shown = TextUtils.ellipsize(place, tp, 250f * k, TextUtils.TruncateAt.END).toString()
-        text(canvas, paint, shown, mx, f.y(248f), 36f * k, col.accentText, 1f)
+        tp.textSize = 34f * k
+        val shown = TextUtils.ellipsize(place, tp, 270f * k, TextUtils.TruncateAt.END).toString()
+        text(canvas, paint, shown, mx, f.y(218f), 34f * k, col.city, 1f)
 
         // divider
-        val dx = f.xr(716f)
-        paint.color = col.content
-        paint.alpha = 70
-        canvas.drawRoundRect(RectF(dx, f.y(62f), dx + 2f * k + 1f, f.y(266f)), k, k, paint)
+        val dx = f.xr(651f)
+        paint.color = col.textVar
+        paint.alpha = 110
+        canvas.drawRoundRect(RectF(dx, f.y(38f), dx + 2f * k + 1f, f.y(246f)), k, k, paint)
         paint.alpha = 255
 
         // humidity
-        icon(context, canvas, R.drawable.wx_drop, f.xr(790f), f.y(112f), 52f * k, col.content, 0.8f)
-        text(canvas, paint, if (weather != null) "${weather.humidity}%" else "--", f.xr(836f), f.y(112f), 38f * k, col.content, 1f, Paint.Align.LEFT)
+        icon(context, canvas, R.drawable.wx_drop, f.xr(719f), f.y(90f), 50f * k, col.textVar, 1f)
+        text(canvas, paint, if (weather != null) "${weather.humidity}%" else "--", f.xr(770f), f.y(90f), 38f * k, col.text, 1f, Paint.Align.LEFT)
 
         // wind
-        icon(context, canvas, R.drawable.wx_wind, f.xr(786f), f.y(236f), 66f * k, col.content, 0.8f)
+        icon(context, canvas, R.drawable.wx_wind, f.xr(717f), f.y(206f), 66f * k, col.textVar, 1f)
         val speed = if (weather != null) (if (imperial) weather.windKmh * 0.621371 else weather.windKmh).roundToInt().toString() else "--"
-        text(canvas, paint, speed, f.xr(872f), f.y(205f), 38f * k, col.content, 1f)
-        text(canvas, paint, if (imperial) "mph" else "km/h", f.xr(872f), f.y(250f), 34f * k, col.content, 1f)
-        compass(context, canvas, paint, f.xr(944f), f.y(222f), 24f * k, weather?.windDir, col.content)
+        text(canvas, paint, speed, f.xr(804f), f.y(185f), 40f * k, col.text, 1f)
+        text(canvas, paint, if (imperial) "mph" else "km/h", f.xr(807f), f.y(234f), 34f * k, col.text, 1f)
+        compass(context, canvas, paint, f.xr(874f), f.y(206f), 22f * k, weather?.windDir, col.text)
         return bmp
     }
 

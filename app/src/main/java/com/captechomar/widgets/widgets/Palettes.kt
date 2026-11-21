@@ -13,6 +13,8 @@ data class WidgetColors(
     val bar: Int = fill, val onBar: Int = content,
     /** The lighter tile on the weather card, and the bright colour for the city name. */
     val tile: Int = container, val accentText: Int = bar,
+    /** Text colours of the weather card (onSurface / onSurfaceVariant) and its city name (primaryContainer). */
+    val text: Int = content, val textVar: Int = content, val city: Int = accentText,
 )
 
 /** Adds tertiary-style accents by turning the hue of the main colours, for palettes that have none of their own. */
@@ -50,7 +52,11 @@ object Palettes {
 
     fun resolve(context: Context, id: String): WidgetColors {
         val dark = isDark(context)
-        if (id == "dynamic" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) return dynamic(context, dark)
+        if (id == "dynamic" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // the weather card's text and city colours come from the same scheme the app itself is drawn with
+            val s = if (dark) androidx.compose.material3.dynamicDarkColorScheme(context) else androidx.compose.material3.dynamicLightColorScheme(context)
+            return dynamic(context, dark).copy(text = s.onSurface.toArgb(), textVar = s.onSurfaceVariant.toArgb(), city = s.primaryContainer.toArgb())
+        }
         val s = scheme(if (id == "dynamic") "FOREST" else id, dark)
         // Text is drawn straight on the container, exactly like the Expressive Clock's dial, so the
         // pair is surface / onSurface. The bar colour is the first accent that stays readable under that text.
@@ -70,6 +76,9 @@ object Palettes {
             onBar = s.onPrimary.toArgb(),
             tile = s.secondaryContainer.toArgb(),
             accentText = s.primary.toArgb(),
+            text = s.onSurface.toArgb(),
+            textVar = s.onSurfaceVariant.toArgb(),
+            city = s.primaryContainer.toArgb(),
         )
     }
 
