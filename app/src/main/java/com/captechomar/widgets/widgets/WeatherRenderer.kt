@@ -87,8 +87,7 @@ object WeatherRenderer {
         paint.color = col.track
         canvas.drawRoundRect(RectF(0f, 0f, W, H), outerR, outerR, paint)
         paint.color = col.tile
-        val tr = 64f * k * (0.6f + 0.4f * round)
-        canvas.drawRoundRect(f.rect(TILE), tr, tr, paint)
+        canvas.drawPath(squircle(f.rect(TILE), 56f * k * (0.6f + 0.4f * round)), paint)
 
         val wc = cfg.weather
         val imperial = wc.imperial
@@ -126,7 +125,7 @@ object WeatherRenderer {
         paint.alpha = 255
 
         // humidity
-        icon(context, canvas, R.drawable.wx_drop, f.xr(719f), f.y(90f), 80f * k, col.textVar, 1f)
+        icon(context, canvas, R.drawable.wx_drop, f.xr(719f), f.y(90f), 76f * k, col.textVar, 1f)
         text(canvas, paint, if (weather != null) "${weather.humidity}%" else "--", f.xr(770f), f.y(90f), 38f * k, col.text, 1f, Paint.Align.LEFT)
 
         // wind
@@ -136,6 +135,24 @@ object WeatherRenderer {
         text(canvas, paint, if (imperial) "mph" else "km/h", f.xr(807f), f.y(234f), 34f * k, col.text, 1f)
         compass(context, canvas, paint, f.xr(874f), f.y(206f), 22f * k, weather?.windDir, col.text)
         return bmp
+    }
+
+    /** A rounded rectangle with continuous (squircle) corners: the curve starts further along each edge. */
+    private fun squircle(r: RectF, radius: Float): android.graphics.Path {
+        val d = min(radius * 1.55f, min(r.width(), r.height()) / 2f)
+        val c = d * 0.3f
+        return android.graphics.Path().apply {
+            moveTo(r.left + d, r.top)
+            lineTo(r.right - d, r.top)
+            cubicTo(r.right - c, r.top, r.right, r.top + c, r.right, r.top + d)
+            lineTo(r.right, r.bottom - d)
+            cubicTo(r.right, r.bottom - c, r.right - c, r.bottom, r.right - d, r.bottom)
+            lineTo(r.left + d, r.bottom)
+            cubicTo(r.left + c, r.bottom, r.left, r.bottom - c, r.left, r.bottom - d)
+            lineTo(r.left, r.top + d)
+            cubicTo(r.left, r.top + c, r.left + c, r.top, r.left + d, r.top)
+            close()
+        }
     }
 
     private fun text(
