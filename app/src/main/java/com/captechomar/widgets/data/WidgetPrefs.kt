@@ -26,6 +26,8 @@ data class WidgetConfig(
     val noArtMode: String = "icon",
     /** Settings of the savings widget. */
     val savings: SavingsConfig = SavingsConfig(),
+    /** Settings of the weather widget. */
+    val weather: WeatherConfig = WeatherConfig(),
     val tapActions: Map<String, TapAction> = emptyMap(),
     /** True once the devices were picked by hand. Until then an empty list means the automatic pick. */
     val manualDevices: Boolean = false,
@@ -87,6 +89,7 @@ object WidgetPrefs {
             heightScale = sp.getFloat("${widgetId}_height_scale", defaults.heightScale),
             noArtMode = sp.getString("${widgetId}_no_art", defaults.noArtMode) ?: defaults.noArtMode,
             savings = SavingsConfig.fromJson(sp.getString("${widgetId}_savings", null)),
+            weather = WeatherConfig.fromJson(sp.getString("${widgetId}_weather", null)),
             tapActions = readActions(sp, widgetId),
             manualDevices = sp.getBoolean("${widgetId}_manual", false),
             deviceOrder = readList(sp, "${widgetId}_order"),
@@ -103,6 +106,7 @@ object WidgetPrefs {
             .putFloat("${widgetId}_height_scale", cfg.heightScale)
             .putString("${widgetId}_no_art", cfg.noArtMode)
             .putString("${widgetId}_savings", cfg.savings.toJson())
+            .putString("${widgetId}_weather", cfg.weather.toJson())
         val actions = JSONObject()
         cfg.tapActions.filterValues { it.type != TapAction.Type.DEFAULT }.forEach { (k, v) -> actions.put(k, v.toJson()) }
         e.putString("${widgetId}_actions", actions.toString())
@@ -129,6 +133,7 @@ object WidgetPrefs {
             .remove("${widgetId}_height_scale")
             .remove("${widgetId}_no_art")
             .remove("${widgetId}_savings")
+            .remove("${widgetId}_weather")
             .remove("${widgetId}_actions")
             .remove("${widgetId}_manual")
             .remove("${widgetId}_order")

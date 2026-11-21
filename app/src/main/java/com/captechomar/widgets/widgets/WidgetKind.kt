@@ -138,7 +138,7 @@ object MusicKind : WidgetKind {
 }
 
 object WidgetKinds {
-    val all: List<WidgetKind> = listOf(BatteryKind, MusicKind, SavingsKind)
+    val all: List<WidgetKind> = listOf(BatteryKind, MusicKind, SavingsKind, WeatherKind)
 
     fun byProvider(className: String?): WidgetKind? = all.firstOrNull { it.providerClass.name == className }
 }
@@ -180,5 +180,39 @@ object SavingsKind : WidgetKind {
         } else {
             views.setOnClickPendingIntent(R.id.btn_emoji, PendingIntent.getActivity(context, widgetId * 10 + 1, settings, flags))
         }
+    }
+}
+
+object WeatherKind : WidgetKind {
+    override val providerClass: Class<*> = WeatherWidgetProvider::class.java
+    override val iconRes = R.drawable.kind_weather
+    override val title = "Weather"
+    override val description = "The time and date, current weather, humidity and wind. Uses Open-Meteo."
+    override val layoutRes = R.layout.widget_weather
+    override val defaultConfig = WidgetConfig(roundness = 1f)
+
+    override fun render(context: Context, cfg: WidgetConfig, widthPx: Int, heightPx: Int): Bitmap =
+        WeatherRenderer.render(context, cfg, widthPx, heightPx)
+
+    override fun bindClicks(
+        context: Context, views: RemoteViews, widgetId: Int, cfg: WidgetConfig, widthDp: Float, heightDp: Float,
+    ) {
+        val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        val settings = Intent(context, com.captechomar.widgets.ui.WidgetConfigActivity::class.java)
+            .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+        views.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, widgetId * 10 + 1, settings, flags))
+
+        // the clock fills the tile drawn in the bitmap
+        val f = WeatherRenderer.frame(widthDp, heightDp)
+        val tile = f.rect(WeatherRenderer.TILE)
+        val d = context.resources.displayMetrics.density
+        fun px(dp: Float) = (dp * d).toInt().coerceAtLeast(0)
+        views.setViewPadding(R.id.clock_area, px(tile.left), px(tile.top), px(widthDp - tile.right), px(heightDp - tile.bottom))
+        val ink = Palettes.resolve(context, cfg.palette).content
+        views.setTextViewTextSize(R.id.clock_time, TypedValue.COMPLEX_UNIT_DIP, 92f * f.k)
+        views.setTextViewTextSize(R.id.clock_date, TypedValue.COMPLEX_UNIT_DIP, 32f * f.k)
+        views.setTextColor(R.id.clock_time, ink)
+        views.setTextColor(R.id.clock_date, ink)
+        views.setViewPadding(R.id.clock_date, 0, px(8f * f.k), 0, 0)
     }
 }

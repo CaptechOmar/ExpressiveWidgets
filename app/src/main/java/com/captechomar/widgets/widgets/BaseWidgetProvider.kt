@@ -32,3 +32,10 @@ class BatteryWidgetProvider : BaseWidgetProvider(BatteryKind)
 class MusicWidgetProvider : BaseWidgetProvider(MusicKind)
 
 class SavingsWidgetProvider : BaseWidgetProvider(SavingsKind)
+
+class WeatherWidgetProvider : BaseWidgetProvider(WeatherKind) {
+    override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
+        super.onUpdate(context, appWidgetManager, appWidgetIds)
+        WeatherRefresh.enqueue(context)
+    }
+}
