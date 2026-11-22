@@ -102,6 +102,7 @@ import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -586,30 +587,75 @@ private fun InfoSheet(
     }
 }
 
-private const val LOOP_MS = 7600f
+// One loop is 5.5 s. Every moment below is timed in milliseconds of the reference recording, where the loop runs 1400 -> 6900.
+private const val LOOP_MS = 5500f
+private const val LOOP_START = 1400f
+
+private fun calLin(t: Float, a: Float, b: Float) = ((t - a) / (b - a)).coerceIn(0f, 1f)
+
+private fun calSeg(t: Float, a: Float, b: Float) = smooth(calLin(t, a, b))
+
+private fun backOut(x: Float, k: Float = 1.7f): Float {
+    val c = x.coerceIn(0f, 1f) - 1f
+    return 1f + c * c * ((k + 1f) * c + k)
+}
+
+private class FaceState(
+    val label: String,
+    val glow: Float,
+    val dim: Float,
+    val liquidA: Float,
+    val wave: Float,
+    val blue: Float,
+    val tabsA: Float,
+    val dotOff: Float,
+    val ringOff: Float,
+    val ghostA: Float,
+    val settle: Float,
+    val mint: Int,
+    val bubble: Int,
+    val blueC: Int,
+)
 
 /**
- * The calibration explainer: a phone lying on its camera bump reads a small tilt, is put flat on a surface and
- * glows, a reset icon pops up and turns into the calibrate icon, then the phone is picked up again. Loops.
+ * The calibration explainer, following the reference recording frame by frame: the phone lies on its camera puck and
+ * the cookie slides off its outline, the phone tips flat and the screen melts into a glowing dot, a reset icon pops up,
+ * is pressed and becomes the calibrate icon while the glow turns blue and the cookie glides back to the centre of its
+ * ring, then the icon shrinks away and the phone is picked up again.
  */
 @Composable
 private fun CalibrationAnimation() {
     val scheme = MaterialTheme.colorScheme
     val loop = rememberInfiniteTransition(label = "calibration")
     val ms by loop.animateFloat(0f, LOOP_MS, infiniteRepeatable(tween(LOOP_MS.toInt(), easing = LinearEasing)), label = "ms")
-    val wave by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(2400, easing = LinearEasing)), label = "wave")
+    val wave by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(3200, easing = LinearEasing)), label = "wave")
+    val t = ms + LOOP_START
 
-    fun seg(a: Float, b: Float) = smooth((ms - a) / (b - a))
+    val lean = (calSeg(t, 2100f, 2550f) - calSeg(t, 6750f, 6900f)).coerceIn(0f, 1f)
+    val tiltIn = calLin(t, 2200f, 2720f)
+    val tiltOut = calSeg(t, 6600f, 6900f)
+    val settle = calSeg(t, 2800f, 3600f)
+    val thetaDeg = (76f * (1f - (1f - tiltIn).pow(1.7f)) + 6f * settle) * (1f - tiltOut)
+    val glow = (calSeg(t, 2450f, 2720f) - calSeg(t, 6730f, 6900f)).coerceIn(0f, 1f)
+    val dim = calSeg(t, 2450f, 2560f) * (1f - calSeg(t, 6850f, 6900f))
+    val liquidA = (1f - calSeg(t, 2560f, 2740f) + calSeg(t, 6820f, 6880f)).coerceIn(0f, 1f)
+    val blue = (calSeg(t, 3940f, 4040f) - calSeg(t, 6440f, 6500f)).coerceIn(0f, 1f)
 
-    val roll = (seg(1500f, 2100f) - seg(7200f, 7600f)).coerceIn(0f, 1f) // the phone settles onto its camera bump
-    val flat = (seg(2100f, 2550f) - seg(7150f, 7600f)).coerceIn(0f, 1f) // the phone lies down (0 = seen from above)
-    val glow = (seg(2250f, 2650f) - seg(7250f, 7600f)).coerceIn(0f, 1f) // the screen turns into a glowing dot
-    val blue = (seg(4300f, 4700f) - seg(7200f, 7500f)).coerceIn(0f, 1f) // the glow and the icon turn blue
+    // the cookie slides off its outline while the phone leans, then glides back once the button is pressed
+    val slosh = calSeg(t, 2200f, 2650f)
+    val glide = 1f - backOut(calLin(t, 4050f, 4480f), 1.2f)
+    val dotOff = slosh * glide
+    val ringOff = slosh * (1f - calSeg(t, 3930f, 4050f))
+    val ghostA = (slosh * (1f - glow) + glow) * (1f - calSeg(t, 6780f, 6900f))
 
-    // the icon: pops up, dips as it changes from reset to calibrate, and shrinks away before the phone is lifted
-    val dip = if (ms in 4300f..4700f) sin(((ms - 4300f) / 400f) * PI.toFloat()) * 0.3f else 0f
-    val iconScale = seg(2900f, 3300f) * (1f - dip) * (1f - seg(6900f, 7200f))
-    val isBlue = ms in 4500f..7050f
+    // the icon pops up, is pressed (dips) and changes from reset to calibrate, then shrinks away
+    val pop = backOut(calLin(t, 2950f, 3250f), 1.3f)
+    val pressM = if (t < 3930f) 1f - 0.21f * calSeg(t, 3730f, 3830f) else 0.79f + 0.21f * backOut(calLin(t, 3930f, 4070f), 1.8f)
+    val vanish = 1f - calSeg(t, 6430f, 6620f)
+    val iconScale = pop * pressM * vanish
+    val calMix = (calSeg(t, 3930f, 4070f) - calSeg(t, 6440f, 6500f)).coerceIn(0f, 1f)
+    val isCal = t in 3930f..6480f
+    val glyphScale = if (isCal) (0.35f + 0.65f * backOut(calLin(t, 3930f, 4070f), 1.5f)) * (1f - 0.6f * calSeg(t, 6400f, 6480f)) else 1f
 
     Box(
         Modifier.fillMaxWidth().aspectRatio(1f / 0.82f).clip(RoundedCornerShape(28.dp)).background(scheme.surfaceContainer),
@@ -617,47 +663,65 @@ private fun CalibrationAnimation() {
         val mint = scheme.primaryContainer
         val blueColor = scheme.tertiary
         val glowColor = lerp(mint, blueColor, blue)
-        val bubbleLight = lerp(mint, Color.White, 0.65f)
-        val liquidDark = lerp(mint, Color.Black, 0.5f)
+        val bubbleLight = lerp(mint, Color.White, 0.72f)
+        val blueDot = lerp(blueColor, Color.White, 0.45f)
 
         Canvas(Modifier.fillMaxSize()) {
             val pw = size.width
             val ph = size.height
-            val wf = pw * 0.78f
-            val hf = wf / 2.1f
-            val thick = wf * 0.055f
+            val wf = pw * 0.775f
+            val hf = wf / 2f
+            val thick = wf * 0.078f
             val cx = pw / 2f
-            val theta = Math.toRadians((76.0 * flat))
+            val theta = Math.toRadians(thetaDeg.toDouble())
             val sinT = sin(theta).toFloat()
             val cosT = cos(theta).toFloat()
-            val yBottom = lerp(ph * 0.68f, ph * 0.86f - thick * 0.97f, flat)
+            val bandH = thick * sinT
+            val flatFrac = (thetaDeg / 76f).coerceIn(0f, 1f)
+            val yBottom = lerp(ph * 0.68f, ph * 0.85f - bandH, flatFrac)
             val d = wf * 8f
-            val rollDeg = 1.3f * roll
-            val label = signed(-1.1f * roll)
+            val rollDeg = 1.3f * lean + 0.7f * settle * (1f - tiltOut)
+            val label = signed(-1.1f * lean)
 
             drawIntoCanvas { canvas ->
                 val n = canvas.nativeCanvas
                 val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
                 n.save()
-                // the left end is held up by the camera bar, so the whole phone leans about its right-hand contact point
+                // the left end rests on the camera puck, so the phone leans about its right-hand contact point
                 n.rotate(rollDeg, cx + wf / 2f, yBottom)
 
-                if (flat > 0.02f) {
-                    val bandH = thick * sinT
-                    // the camera bar under the left end
-                    p.color = 0xFFA6ACC0.toInt()
-                    n.drawRoundRect(
-                        RectF(cx - wf / 2f + wf * 0.12f, yBottom + bandH - 4f, cx - wf / 2f + wf * 0.27f, yBottom + bandH + wf * 0.024f * flat),
-                        10f, 10f, p,
-                    )
-                    // the near edge of the phone
-                    p.shader = LinearGradient(
-                        cx - wf / 2f, 0f, cx + wf / 2f, 0f,
-                        intArrayOf(0xFF8E94A8.toInt(), 0xFFD6DBE8.toInt(), 0xFFB3B9CC.toInt(), 0xFF8E94A8.toInt()),
-                        floatArrayOf(0f, 0.35f, 0.7f, 1f), Shader.TileMode.CLAMP,
-                    )
-                    n.drawRoundRect(RectF(cx - wf / 2f, yBottom - 3f, cx + wf / 2f, yBottom + bandH), 8f, 8f, p)
+                val left = cx - wf / 2f
+                if (thetaDeg > 1f) {
+                    // soft contact shadow under the phone and its puck
+                    n.save()
+                    val shY = yBottom + bandH + wf * 0.012f
+                    n.translate(cx - wf * 0.06f, shY)
+                    n.scale(1f, 0.07f)
+                    p.shader = RadialGradient(0f, 0f, wf * 0.5f, intArrayOf(withAlpha(0xFF000000.toInt(), (110 * flatFrac).roundToInt()), 0), null, Shader.TileMode.CLAMP)
+                    n.drawCircle(0f, 0f, wf * 0.5f, p)
                     p.shader = null
+                    n.restore()
+
+                    // the camera puck under the left end
+                    if (lean > 0.02f) {
+                        val pTop = yBottom + bandH * 0.4f
+                        val pBottom = yBottom + bandH + wf * 0.03f * lean
+                        p.color = 0xFF9FA5BB.toInt()
+                        n.drawRoundRect(RectF(left + wf * 0.075f, pTop, left + wf * 0.265f, pBottom), wf * 0.014f, wf * 0.014f, p)
+                        p.color = 0xFFC6CBDB.toInt()
+                        n.drawRoundRect(RectF(left + wf * 0.085f, pBottom - wf * 0.012f * lean - 1f, left + wf * 0.255f, pBottom), wf * 0.012f, wf * 0.012f, p)
+                    }
+
+                    // the near edge of the phone: a thick silver slab
+                    p.shader = LinearGradient(
+                        left, 0f, left + wf, 0f,
+                        intArrayOf(0xFF9097AD.toInt(), 0xFFC4C9D8.toInt(), 0xFFD9DDE8.toInt(), 0xFFB1B7CA.toInt(), 0xFF8F95AB.toInt()),
+                        floatArrayOf(0f, 0.25f, 0.4f, 0.75f, 1f), Shader.TileMode.CLAMP,
+                    )
+                    n.drawRoundRect(RectF(left, yBottom - 3f, left + wf, yBottom + bandH), bandH * 0.45f, bandH * 0.45f, p)
+                    p.shader = null
+                    p.color = 0x33000000
+                    n.drawRect(RectF(left + bandH * 0.4f, yBottom + bandH - 1.5f, left + wf - bandH * 0.4f, yBottom + bandH), p)
                 }
 
                 // the face of the phone, drawn flat and then tipped back with a perspective transform
@@ -677,8 +741,13 @@ private fun CalibrationAnimation() {
                 m.setPolyToPoly(src, 0, dst, 0, 4)
                 n.concat(m)
                 drawFace(
-                    n, wf, hf, label, glow, roll, wave, blue,
-                    mint.toArgb(), bubbleLight.toArgb(), liquidDark.toArgb(), glowColor.toArgb(),
+                    n, wf, hf,
+                    FaceState(
+                        label, glow, dim, liquidA, wave, blue, ((1f - calSeg(t, 2250f, 2400f)) + calSeg(t, 6850f, 6900f)).coerceIn(0f, 1f),
+                        dotOff, ringOff, ghostA, settle,
+                        mint.toArgb(), bubbleLight.toArgb(), blueDot.toArgb(),
+                    ),
+                    glowColor.toArgb(),
                 )
                 n.restore()
             }
@@ -689,7 +758,7 @@ private fun CalibrationAnimation() {
             val diameter = maxWidth * 0.19f
             Box(
                 Modifier
-                    .offset(maxWidth / 2 - diameter / 2, maxHeight * 0.46f - diameter / 2)
+                    .offset(maxWidth / 2 - diameter / 2, maxHeight * 0.465f - diameter / 2)
                     .size(diameter)
                     .graphicsLayer {
                         scaleX = iconScale
@@ -697,123 +766,143 @@ private fun CalibrationAnimation() {
                         alpha = (iconScale * 2f).coerceIn(0f, 1f)
                     }
                     .shadow(6.dp, CircleShape)
-                    .background(if (isBlue) blueColor else mint, CircleShape),
+                    .background(lerp(mint, blueColor, calMix), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    painterResource(if (isBlue) R.drawable.lv_calibrate else R.drawable.lv_reset),
+                    painterResource(if (isCal) R.drawable.lv_calibrate else R.drawable.lv_reset),
                     contentDescription = null,
-                    tint = if (isBlue) scheme.onTertiary else scheme.onPrimaryContainer,
-                    modifier = Modifier.size(diameter * 0.52f),
+                    tint = lerp(scheme.onPrimaryContainer, scheme.onTertiary, calMix),
+                    modifier = Modifier.size(diameter * 0.52f * glyphScale.coerceAtLeast(0.01f)),
                 )
             }
         }
     }
 }
 
-/** The phone's face, in its own flat coordinates: a screen showing a spirit level, which turns into a glow once the phone lies flat. */
-private fun drawFace(
-    n: android.graphics.Canvas,
-    w: Float,
-    h: Float,
-    label: String,
-    glow: Float,
-    roll: Float,
-    wave: Float,
-    blue: Float,
-    mint: Int,
-    bubbleLight: Int,
-    liquidDark: Int,
-    glowColor: Int,
-) {
+/**
+ * The phone's face in its own flat coordinates: a spirit level with a liquid and a cookie that slides off its outline,
+ * which melts into a glowing dot (ringed, and turning blue while calibrating) once the phone lies flat.
+ */
+private fun drawFace(n: android.graphics.Canvas, w: Float, h: Float, s: FaceState, glowColor: Int) {
     val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
     val r = h * 0.13f
+    val white = 0xFFFFFFFF.toInt()
+
+    // the camera humps peeking over the top edge
+    if (s.tabsA > 0.01f) {
+        p.color = 0xFFB9BFD2.toInt()
+        p.alpha = (255 * s.tabsA.coerceIn(0f, 1f)).roundToInt()
+        n.drawRoundRect(RectF(w * 0.26f, -h * 0.018f, w * 0.34f, h * 0.03f), h * 0.01f, h * 0.01f, p)
+        n.drawRoundRect(RectF(w * 0.395f, -h * 0.018f, w * 0.54f, h * 0.03f), h * 0.01f, h * 0.01f, p)
+        p.alpha = 255
+    }
+
     // rim and screen
     p.color = 0xFFB9BFD2.toInt()
     n.drawRoundRect(RectF(0f, 0f, w, h), r, r, p)
-    val inset = h * 0.03f
+    val inset = h * 0.02f
     val screen = RectF(inset, inset, w - inset, h - inset)
-    p.color = 0xFF020C0A.toInt()
+    p.color = 0xFF020F0C.toInt()
     n.drawRoundRect(screen, r - inset, r - inset, p)
 
     n.save()
     val clip = android.graphics.Path().apply { addRoundRect(screen, r - inset, r - inset, android.graphics.Path.Direction.CW) }
     n.clipPath(clip)
 
-    // the liquid, two waves, fading to nothing as the screen turns into a glow
-    val liquidAlpha = 1f - smooth((glow - 0.45f) / 0.55f)
+    // the liquid: a darker wave behind the bright one, dimming as the screen melts away
     fun wavePath(base: Float, amp: Float, phase: Float): android.graphics.Path {
         val path = android.graphics.Path()
         path.moveTo(0f, h)
         var x = 0f
         while (x <= w) {
-            path.lineTo(x, base + amp * sin((x / w * 1.3f + phase) * 2f * PI.toFloat()))
+            path.lineTo(x, base + amp * sin((x / w + phase) * 2f * PI.toFloat()))
             x += w / 40f
         }
         path.lineTo(w, h)
         path.close()
         return path
     }
-    val liquid = lerpInt(mint, liquidDark, glow)
-    p.color = liquidDark
-    p.alpha = (255 * liquidAlpha * 0.85f).roundToInt()
-    n.drawPath(wavePath(h * 0.40f, h * 0.03f, wave + 0.3f), p)
-    p.color = liquid
-    p.alpha = (255 * liquidAlpha).roundToInt()
-    n.drawPath(wavePath(h * 0.44f, h * 0.025f, -wave), p)
+    val back = lerpInt(s.mint, 0xFF000000.toInt(), 0.45f)
+    val dimmed = lerpInt(s.mint, 0xFF000000.toInt(), 0.5f)
+    p.color = lerpInt(back, dimmed, s.dim)
+    p.alpha = (255 * s.liquidA).roundToInt()
+    n.drawPath(wavePath(h * 0.475f, h * 0.026f, -s.wave + 0.35f), p)
+    p.color = lerpInt(s.mint, dimmed, s.dim)
+    p.alpha = (255 * s.liquidA).roundToInt()
+    n.drawPath(wavePath(h * 0.50f, h * 0.022f, s.wave), p)
     p.alpha = 255
 
     // the reading
     val text = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
         color = 0xFFD9FFF3.toInt()
-        alpha = (255 * (1f - glow)).roundToInt()
+        alpha = (255 * (1f - s.glow * 0.92f)).roundToInt()
         textSize = h * 0.2f
         textAlign = android.graphics.Paint.Align.CENTER
         typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
-    n.drawText(label, w / 2f, h * 0.30f, text)
+    n.drawText(s.label, w / 2f, h * 0.335f, text)
 
-    // the bubble: a rounded square on the liquid that becomes a glowing dot
-    val cy = lerpF(h * 0.66f, h * 0.52f, glow)
-    val half = lerpF(h * 0.17f, h * 0.11f, glow)
-    val corner = lerpF(h * 0.06f, half, glow)
-    val bx = w / 2f + w * 0.02f * roll * (1f - glow)
-    if (glow > 0.01f) {
-        p.shader = RadialGradient(w / 2f, cy, h * (0.18f + 0.5f * glow), intArrayOf(withAlpha(glowColor, (200 * glow).roundToInt()), withAlpha(glowColor, 0)), null, Shader.TileMode.CLAMP)
-        n.drawCircle(w / 2f, cy, h * (0.18f + 0.5f * glow), p)
+    val cy = h * (0.66f + s.glow * (0.08f - 0.15f * s.settle))
+    val dotX = w / 2f + w * 0.045f * s.dotOff
+    val ringX = w / 2f + w * 0.045f * s.ringOff
+    val half0 = h * 0.158f
+
+    if (s.glow > 0.01f) {
+        // a soft halo and the faint cross hair through the dot
+        p.shader = RadialGradient(ringX, cy, h * 0.42f, intArrayOf(withAlpha(glowColor, (210 * s.glow).roundToInt()), withAlpha(glowColor, 0)), null, Shader.TileMode.CLAMP)
+        n.drawCircle(ringX, cy, h * 0.42f, p)
         p.shader = null
-    }
-    if (roll > 0.01f && glow < 0.9f) {
-        // the ghost of where the bubble sat before it slid
-        p.style = android.graphics.Paint.Style.STROKE
-        p.strokeWidth = h * 0.012f
-        p.color = liquidDark
-        p.alpha = (255 * (1f - glow)).roundToInt()
-        n.drawRoundRect(RectF(w / 2f - half, cy - half, w / 2f + half, cy + half), corner, corner, p)
-        p.style = android.graphics.Paint.Style.FILL
+        p.color = white
+        p.alpha = (26 * s.glow).roundToInt()
+        n.drawRect(RectF(0f, cy - h * 0.003f, w, cy + h * 0.003f), p)
+        n.drawRect(RectF(ringX - h * 0.003f, 0f, ringX + h * 0.003f, h), p)
         p.alpha = 255
     }
-    p.color = lerpInt(bubbleLight, withAlpha(glowColor, 255), glow * 0.35f)
-    n.drawRoundRect(RectF(bx - half, cy - half, bx + half, cy + half), corner, corner, p)
 
-    // rings spreading from the glow once the phone is calibrating
-    if (blue > 0.01f) {
-        p.style = android.graphics.Paint.Style.STROKE
-        p.strokeWidth = h * 0.012f
-        for (k in 0 until 3) {
-            val ph = (wave + k / 3f) % 1f
+    // the outline the cookie started in; it turns into the ring around the glowing dot
+    val ghostX = lerpF(w / 2f, ringX, s.glow)
+    val gHalf = lerpF(half0 * 1.14f, h * 0.28f, s.glow)
+    val gCorner = lerpF(h * 0.075f, gHalf, s.glow)
+    val brightBlue = lerpInt(s.blueC, white, 0.5f)
+    if (s.ghostA > 0.01f) {
+        val rect = RectF(ghostX - gHalf, cy - gHalf, ghostX + gHalf, cy + gHalf)
+        if (s.glow > 0.01f) {
             p.color = glowColor
-            p.alpha = (255 * (1f - ph) * 0.7f * blue * glow).roundToInt()
-            n.drawCircle(w / 2f, cy, half * (1.2f + 2.4f * ph), p)
+            p.alpha = (255 * 0.22f * s.glow * s.ghostA).roundToInt()
+            n.drawRoundRect(rect, gCorner, gCorner, p)
         }
+        p.style = android.graphics.Paint.Style.STROKE
+        p.strokeWidth = h * 0.012f
+        val outline = lerpInt(lerpInt(back, glowColor, s.glow), brightBlue, s.blue)
+        p.color = outline
+        p.alpha = (255 * s.ghostA * lerpF(0.9f, lerpF(0.35f, 1f, s.blue), s.glow)).roundToInt()
+        n.drawRoundRect(rect, gCorner, gCorner, p)
         p.style = android.graphics.Paint.Style.FILL
         p.alpha = 255
     }
 
-    // the front camera
+    // the cookie: a rounded square that melts into a dot
+    val half = lerpF(half0, h * 0.18f, s.glow)
+    val corner = lerpF(h * 0.075f, half, s.glow)
+    p.color = lerpInt(s.bubble, s.blueC, s.blue)
+    n.drawRoundRect(RectF(dotX - half, cy - half, dotX + half, cy + half), corner, corner, p)
+    if (s.blue > 0.3f) {
+        p.color = 0xFF0B4D63.toInt()
+        p.alpha = (255 * ((s.blue - 0.3f) / 0.7f)).roundToInt()
+        p.style = android.graphics.Paint.Style.STROKE
+        p.strokeWidth = h * 0.011f
+        p.strokeCap = android.graphics.Paint.Cap.ROUND
+        n.drawLine(dotX - half * 0.30f, cy - h * 0.004f, dotX - half * 0.08f, cy - h * 0.004f, p)
+        n.drawLine(dotX + half * 0.08f, cy - h * 0.004f, dotX + half * 0.34f, cy - h * 0.004f, p)
+        p.style = android.graphics.Paint.Style.FILL
+        p.alpha = 255
+    }
+
+    // the front camera, where the liquid meets the left edge
     p.color = 0xFF000000.toInt()
-    p.alpha = (255 * (1f - glow)).roundToInt()
-    n.drawCircle(w * 0.035f, h * 0.40f, h * 0.03f, p)
+    p.alpha = (255 * (1f - 0.4f * s.glow)).roundToInt()
+    n.drawCircle(w * 0.058f, h * 0.50f, h * 0.026f, p)
     p.alpha = 255
     n.restore()
 }
