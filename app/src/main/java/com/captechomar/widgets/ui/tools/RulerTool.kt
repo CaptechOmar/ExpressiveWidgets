@@ -37,6 +37,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -110,8 +112,8 @@ fun RulerTool() {
     var lineMm by rememberSaveable { mutableFloatStateOf(50f) }
     var heightPx by remember { mutableFloatStateOf(0f) }
 
-    val bg = MaterialTheme.colorScheme.secondaryContainer
-    val ink = MaterialTheme.colorScheme.onSecondaryContainer
+    val bg = MaterialTheme.colorScheme.background
+    val ink = MaterialTheme.colorScheme.onBackground
     val accent = MaterialTheme.colorScheme.primary
 
     Box(Modifier.fillMaxSize()) {
@@ -167,14 +169,15 @@ fun RulerTool() {
         // the distance of the line from zero
         val main = if (metric) "%.2f cm".format(lineMm / 10f) else "%.3f in".format(lineMm / 25.4f)
         val other = if (metric) "%.3f in".format(lineMm / 25.4f) else "%.2f cm".format(lineMm / 10f)
-        Surface(
-            shape = RoundedCornerShape(20.dp),
-            color = accent,
-            shadowElevation = 4.dp,
+        // a plain box, not a Surface: a Surface swallows touches, and the label should be draggable like the line
+        val pillShape = RoundedCornerShape(20.dp)
+        Box(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(start = 112.dp)
-                .offset { IntOffset(0, (lineMm * pxPerMm - 34.dp.toPx()).roundToInt().coerceAtLeast(0)) },
+                .offset { IntOffset(0, (lineMm * pxPerMm - 34.dp.toPx()).roundToInt().coerceAtLeast(0)) }
+                .shadow(4.dp, pillShape)
+                .background(accent, pillShape),
         ) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Text(main, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimary)
@@ -185,7 +188,7 @@ fun RulerTool() {
         // floating controls
         Surface(
             shape = RoundedCornerShape(32.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            color = MaterialTheme.colorScheme.surfaceContainer, // same as the navigation bar
             shadowElevation = 8.dp,
             modifier = Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(20.dp),
         ) {

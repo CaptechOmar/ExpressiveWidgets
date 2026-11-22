@@ -48,7 +48,7 @@ private val hint @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
 
 /** Live values of one sensor, or null until the first reading. [available] says if the phone has the sensor at all. */
 @Composable
-private fun rememberSensor(type: Int): Pair<Boolean, State<FloatArray?>> {
+internal fun rememberSensor(type: Int): Pair<Boolean, State<FloatArray?>> {
     val context = LocalContext.current
     val manager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
     val sensor = remember { manager.getDefaultSensor(type) }
@@ -68,75 +68,8 @@ private fun rememberSensor(type: Int): Pair<Boolean, State<FloatArray?>> {
 }
 
 @Composable
-private fun Missing(what: String) {
+internal fun Missing(what: String) {
     Text("This phone has no $what sensor.", style = MaterialTheme.typography.bodyLarge, color = hint)
-}
-
-// ---------------------------------------------------------------- compass
-
-@Composable
-fun CompassTool() {
-    val (available, rotation) = rememberSensor(Sensor.TYPE_ROTATION_VECTOR)
-    if (!available) return Missing("compass")
-    var heading by remember { mutableStateOf(0f) }
-    val v = rotation.value
-    LaunchedEffect(v) {
-        if (v == null) return@LaunchedEffect
-        val m = FloatArray(9)
-        val o = FloatArray(3)
-        SensorManager.getRotationMatrixFromVector(m, v)
-        SensorManager.getOrientation(m, o)
-        val target = ((Math.toDegrees(o[0].toDouble()).toFloat() + 360f) % 360f)
-        // move along the shortest way round so the dial does not spin when crossing north
-        var d = target - heading
-        while (d > 180f) d -= 360f
-        while (d < -180f) d += 360f
-        heading = (heading + d * 0.25f + 360f) % 360f
-    }
-    val names = listOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
-    val dir = names[((heading + 22.5f) / 45f).toInt() % 8]
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        ResultCard("Heading", "${heading.roundToInt()}° $dir")
-        val ring = MaterialTheme.colorScheme.outline
-        val north = MaterialTheme.colorScheme.error
-        val face = MaterialTheme.colorScheme.tertiaryContainer
-        val onFace = MaterialTheme.colorScheme.onTertiaryContainer
-        Box(Modifier.fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
-            Box(Modifier.fillMaxSize().rotate(-heading)) {
-                Canvas(Modifier.fillMaxSize()) {
-                    drawCircle(face)
-                    drawCircle(ring, style = Stroke(2.dp.toPx()))
-                    val c = center
-                    val r = size.minDimension / 2
-                    for (i in 0 until 72) {
-                        val a = i * 5 * PI / 180
-                        val len = if (i % 6 == 0) 18.dp.toPx() else 9.dp.toPx()
-                        val s = Offset(c.x + (r - 4.dp.toPx()) * kotlin.math.sin(a).toFloat(), c.y - (r - 4.dp.toPx()) * kotlin.math.cos(a).toFloat())
-                        val e = Offset(c.x + (r - 4.dp.toPx() - len) * kotlin.math.sin(a).toFloat(), c.y - (r - 4.dp.toPx() - len) * kotlin.math.cos(a).toFloat())
-                        drawLine(if (i == 0) north else onFace, s, e, strokeWidth = if (i % 6 == 0) 2.5.dp.toPx() else 1.dp.toPx())
-                    }
-                }
-                Text("N", color = north, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.align(Alignment.TopCenter).padding(top = 30.dp))
-                Text("S", color = onFace, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 30.dp))
-                Text("W", color = onFace, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.align(Alignment.CenterStart).padding(start = 30.dp))
-                Text("E", color = onFace, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.align(Alignment.CenterEnd).padding(end = 30.dp))
-            }
-            // the fixed pointer: the way you are facing
-            Canvas(Modifier.fillMaxSize()) {
-                val c = center
-                val h = 26.dp.toPx()
-                val path = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(c.x, 0f)
-                    lineTo(c.x - h / 2, h)
-                    lineTo(c.x + h / 2, h)
-                    close()
-                }
-                drawPath(path, onFace)
-            }
-        }
-        if (v == null) Text("Waiting for the sensor…", style = MaterialTheme.typography.bodyMedium, color = hint)
-        else Text("Keep the phone flat and away from magnets for the best reading.", style = MaterialTheme.typography.bodySmall, color = hint)
-    }
 }
 
 // ---------------------------------------------------------------- level
