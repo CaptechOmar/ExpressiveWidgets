@@ -12,6 +12,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -67,6 +68,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Matrix
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -79,7 +84,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.graphics.shapes.Morph
@@ -271,7 +277,7 @@ fun LevelTool() {
     val wob = sin(wobble * 2f * PI.toFloat())
     val wobCos = cos(wobble * 2f * PI.toFloat())
     val melt = (animMelt + 0.07f * wob * min(1f, incline / 3f)).coerceIn(0f, 1f)
-    val blobShape = if (melt < 0.5f) morphA.toShape(melt * 2f) else morphB.toShape((melt - 0.5f) * 2f)
+    val blobShape: Shape = if (melt < 0.5f) MorphShape(morphA, melt * 2f) else MorphShape(morphB, (melt - 0.5f) * 2f)
 
     Box(Modifier.fillMaxSize().safeDrawingPadding()) {
         Column(Modifier.fillMaxSize().padding(horizontal = 12.dp)) {
@@ -541,5 +547,27 @@ private fun CalibrationAnimation() {
                 .background(scheme.tertiary),
             contentAlignment = Alignment.Center,
         ) { Icon(painterResource(R.drawable.lv_calibrate), contentDescription = null, tint = scheme.onTertiary, modifier = Modifier.size(38.dp)) }
+    }
+}
+
+/** A shape part-way through a [Morph], fitted to whatever box it is clipped to. */
+private class MorphShape(private val morph: Morph, private val progress: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val path = Path()
+        val cubics = morph.asCubics(progress)
+        if (cubics.isNotEmpty()) {
+            path.moveTo(cubics.first().anchor0X, cubics.first().anchor0Y)
+            for (c in cubics) path.cubicTo(c.control0X, c.control0Y, c.control1X, c.control1Y, c.anchor1X, c.anchor1Y)
+            path.close()
+            val b = path.getBounds()
+            val k = min(size.width / b.width, size.height / b.height)
+            val m = Matrix().apply {
+                translate(size.width / 2f, size.height / 2f)
+                scale(k, k)
+                translate(-b.center.x, -b.center.y)
+            }
+            path.transform(m)
+        }
+        return Outline.Generic(path)
     }
 }
