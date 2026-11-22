@@ -114,7 +114,7 @@ fun RulerTool() {
 
     val bg = MaterialTheme.colorScheme.background
     val ink = MaterialTheme.colorScheme.onBackground
-    val accent = MaterialTheme.colorScheme.primary
+    val accent = MaterialTheme.colorScheme.primaryContainer
 
     Box(Modifier.fillMaxSize()) {
         Canvas(
@@ -180,8 +180,8 @@ fun RulerTool() {
                 .background(accent, pillShape),
         ) {
             Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Text(main, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimary)
-                Text(other, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimary)
+                Text(main, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text(other, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
             }
         }
 
