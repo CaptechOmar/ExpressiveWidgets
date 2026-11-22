@@ -394,7 +394,7 @@ private fun Dial(
     val pillRing = scheme.outlineVariant
     val pillSelected = scheme.primary
     val shapeIndex = settings.shape.coerceIn(0, DIAL_SHAPES.lastIndex)
-    val shape = remember(shapeIndex) { DIAL_SHAPES[shapeIndex].second.toShape() }
+    val shape = DIAL_SHAPES[shapeIndex].second.toShape()
     val rMin = remember(shape) { innerRadius(shape) }
     val corners = settings.corners
     val tickInk = onFace
@@ -567,7 +567,7 @@ private fun Dial(
         // in edit mode a selected corner with data gets a button that hides it
         if (editing && selected in 0..3 && corners[selected] != CornerData.EMPTY) {
             val pillR = dialR * 1.06f + dialR * 0.1f * 0.72f / 2f + dialR * 0.06f
-            val angle = Math.toRadians(floatArrayOf(195.0, 285.0, 165.0, 75.0)[selected])
+            val angle = Math.toRadians(doubleArrayOf(195.0, 285.0, 165.0, 75.0)[selected])
             val x = box / 2 + pillR * cos(angle).toFloat() - 20.dp
             val y = box / 2 + pillR * sin(angle).toFloat() - 20.dp
             Box(
