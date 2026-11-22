@@ -41,8 +41,8 @@ fun String.toNum(): Double? = replace(',', '.').toDoubleOrNull()
 
 /** Two or more choices in a row, like metric / imperial. */
 @Composable
-fun Choice(options: List<String>, selected: Int, onSelect: (Int) -> Unit) {
-    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+fun Choice(options: List<String>, selected: Int, modifier: Modifier = Modifier.fillMaxWidth(), onSelect: (Int) -> Unit) {
+    SingleChoiceSegmentedButtonRow(modifier) {
         options.forEachIndexed { i, text ->
             SegmentedButton(
                 selected = i == selected,

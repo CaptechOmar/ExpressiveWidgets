@@ -12,6 +12,8 @@ class Tool(
     val title: String,
     val description: String,
     val iconRes: Int,
+    /** A tool that takes the whole screen, with its own floating controls (the ruler). */
+    val fullScreen: Boolean = false,
     val content: @Composable () -> Unit,
 )
 
@@ -32,7 +34,7 @@ object ToolCategories {
         ToolCategory(
             "everyday", "Everyday", "Ruler, compass, level, barometer", R.drawable.cat_everyday, MaterialShapes.Cookie9Sided,
             listOf(
-                Tool("ruler", "Ruler", "Measure on your screen in cm or inches", R.drawable.tool_ruler) { RulerTool() },
+                Tool("ruler", "Ruler", "Measure on your screen in cm or inches", R.drawable.tool_ruler, fullScreen = true) { RulerTool() },
                 Tool("compass", "Compass", "Which way you are facing", R.drawable.tool_compass) { CompassTool() },
                 Tool("level", "Level", "Check if a surface is flat", R.drawable.tool_level) { LevelTool() },
                 Tool("barometer", "Barometer", "Air pressure and altitude", R.drawable.tool_barometer) { BarometerTool() },

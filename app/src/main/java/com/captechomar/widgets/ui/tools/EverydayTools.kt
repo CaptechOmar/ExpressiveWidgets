@@ -72,59 +72,6 @@ private fun Missing(what: String) {
     Text("This phone has no $what sensor.", style = MaterialTheme.typography.bodyLarge, color = hint)
 }
 
-// ---------------------------------------------------------------- ruler
-
-@Composable
-fun RulerTool() {
-    var metric by rememberSaveable { mutableStateOf(true) }
-    val context = LocalContext.current
-    val dm = context.resources.displayMetrics
-    val screenH = LocalConfiguration.current.screenHeightDp.dp
-    val ink = MaterialTheme.colorScheme.onSurface
-    val bg = MaterialTheme.colorScheme.secondaryContainer
-    val onBg = MaterialTheme.colorScheme.onSecondaryContainer
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Inputs { Choice(listOf("Centimetres", "Inches"), if (metric) 0 else 1) { metric = it == 0 } }
-        Canvas(Modifier.fillMaxWidth().height(screenH - 200.dp)) {
-            drawRoundRect(bg, cornerRadius = androidx.compose.ui.geometry.CornerRadius(28.dp.toPx()))
-            val pxPerUnit = if (metric) dm.ydpi / 25.4f * 10f else dm.ydpi // pixels in a cm or an inch
-            val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = onBg.toArgb()
-                textSize = 14.dp.toPx()
-                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-            }
-            val lineColor = onBg
-            val steps = if (metric) 10 else 16 // marks per unit
-            val total = (size.height / pxPerUnit * steps).toInt()
-            for (i in 0..total) {
-                val y = i * pxPerUnit / steps
-                if (y > size.height) break
-                val len = if (metric) {
-                    when {
-                        i % 10 == 0 -> 44.dp.toPx()
-                        i % 5 == 0 -> 30.dp.toPx()
-                        else -> 18.dp.toPx()
-                    }
-                } else {
-                    when {
-                        i % 16 == 0 -> 44.dp.toPx()
-                        i % 8 == 0 -> 34.dp.toPx()
-                        i % 4 == 0 -> 26.dp.toPx()
-                        i % 2 == 0 -> 18.dp.toPx()
-                        else -> 11.dp.toPx()
-                    }
-                }
-                drawLine(lineColor, Offset(0f, y), Offset(len, y), strokeWidth = 1.5.dp.toPx())
-                if (i % steps == 0 && i > 0) drawIntoCanvas { it.nativeCanvas.drawText((i / steps).toString(), len + 8.dp.toPx(), y + paint.textSize / 3, paint) }
-            }
-        }
-        Text(
-            "Lengths follow the screen's reported density, so check it against a real ruler once.",
-            style = MaterialTheme.typography.bodySmall, color = hint,
-        )
-    }
-}
-
 // ---------------------------------------------------------------- compass
 
 @Composable
