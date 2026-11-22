@@ -386,8 +386,8 @@ private fun Dial(
     onHide: (Int) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val face = scheme.primary
-    val onFace = scheme.onPrimary
+    val face = scheme.primaryContainer
+    val onFace = scheme.onPrimaryContainer
     val north = scheme.error
     val cornerInk = scheme.onSurfaceVariant
     val pillFill = scheme.surfaceContainerLow
