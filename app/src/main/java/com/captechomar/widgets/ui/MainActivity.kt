@@ -64,10 +64,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppTheme {
                 var tab by rememberSaveable { mutableIntStateOf(0) }
+                // what the Tools tab has open: 0 nothing, 1 a tool, 2 a full-screen tool (the ruler)
+                var toolMode by remember { mutableIntStateOf(0) }
+                val inTool = tab == 1 && toolMode != 0
                 Scaffold(
                     containerColor = MaterialTheme.colorScheme.background,
                     bottomBar = {
-                        NavigationBar {
+                        if (!inTool) NavigationBar {
                             NavigationBarItem(
                                 selected = tab == 0, onClick = { tab = 0 }, label = { Text("Widgets") },
                                 icon = { Icon(painterResource(R.drawable.tab_widgets), contentDescription = null) },
@@ -79,8 +82,8 @@ class MainActivity : ComponentActivity() {
                         }
                     },
                 ) { inner ->
-                    Box(Modifier.padding(inner)) {
-                        if (tab == 0) WidgetsTab(refresh) else ToolsTab()
+                    Box(if (tab == 1 && toolMode == 2) Modifier else Modifier.padding(inner)) {
+                        if (tab == 0) WidgetsTab(refresh) else ToolsTab { toolMode = it }
                     }
                 }
             }

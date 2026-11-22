@@ -7,9 +7,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,9 +22,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -34,20 +41,71 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.RoundedPolygon
+import com.captechomar.widgets.R
 import com.captechomar.widgets.ui.Container
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 
-/** The Tools tab: category tiles, then a category's tools, then one tool. Back steps out one level. */
+private const val FAVORITES = "favorites"
+
+/** A tool together with the category it lives in; [key] is how favorites and navigation refer to it. */
+private class Entry(val tool: Tool, val category: ToolCategory) {
+    val key = "${category.id}/${tool.id}"
+}
+
+/**
+ * The Tools tab: category tiles, then a category's tools, then one tool. Back steps out one level.
+ * [onMode] says what is open so the bottom bar can hide: 0 nothing, 1 a tool, 2 a full-screen tool.
+ */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ToolsTab() {
+fun ToolsTab(onMode: (Int) -> Unit) {
+    val favorites = rememberFavorites()
     var categoryId by rememberSaveable { mutableStateOf<String?>(null) }
-    var toolId by rememberSaveable { mutableStateOf<String?>(null) }
-    val category = ToolCategories.all.firstOrNull { it.id == categoryId }
-    val tool = category?.tools?.firstOrNull { it.id == toolId }
+    var toolKey by rememberSaveable { mutableStateOf<String?>(null) }
 
-    BackHandler(enabled = category != null) { if (tool != null) toolId = null else categoryId = null }
+    val everything = ToolCategories.all.flatMap { c -> c.tools.map { Entry(it, c) } }
+    val favoriteEntries = everything.filter { it.key in favorites.keys }
+    val favoritesCategory = ToolCategory(FAVORITES, "Favorites", "Your starred tools", R.drawable.tool_star_filled, MaterialShapes.Sunny, favoriteEntries.map { it.tool })
+
+    // if the last favorite is removed while its page is open, go back to the tiles
+    LaunchedEffect(favoriteEntries.isEmpty(), categoryId) {
+        if (categoryId == FAVORITES && favoriteEntries.isEmpty()) {
+            categoryId = null
+            toolKey = null
+        }
+    }
+
+    val category = if (categoryId == FAVORITES) favoritesCategory.takeIf { favoriteEntries.isNotEmpty() } else ToolCategories.all.firstOrNull { it.id == categoryId }
+    val rows = when {
+        category == null -> emptyList()
+        category.id == FAVORITES -> favoriteEntries
+        else -> category.tools.map { Entry(it, category) }
+    }
+    val open = everything.firstOrNull { it.key == toolKey }?.takeIf { category != null }
+
+    SideEffect { onMode(if (open == null) 0 else if (open.tool.fullScreen) 2 else 1) }
+    DisposableEffect(Unit) { onDispose { onMode(0) } }
+    BackHandler(enabled = category != null) { if (open != null) toolKey = null else categoryId = null }
+
+    if (open != null && open.tool.fullScreen) {
+        Box(Modifier.fillMaxSize()) {
+            open.tool.content()
+            // floating back and favorite buttons
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                shadowElevation = 8.dp,
+                modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(16.dp),
+            ) {
+                Row {
+                    FavoriteButton(open.key in favorites.keys) { favorites.toggle(open.key) }
+                    IconButton(onClick = { toolKey = null }) {
+                        Icon(painterResource(R.drawable.tool_back), contentDescription = "Back")
+                    }
+                }
+            }
+        }
+        return
+    }
 
     Column(
         modifier = Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 20.dp),
@@ -61,7 +119,8 @@ fun ToolsTab() {
                     style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 6.dp, bottom = 8.dp),
                 )
-                ToolCategories.all.chunked(2).forEachIndexed { row, pair ->
+                val tiles = (if (favoriteEntries.isNotEmpty()) listOf(favoritesCategory) else emptyList()) + ToolCategories.all
+                tiles.chunked(2).forEachIndexed { row, pair ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         pair.forEachIndexed { col, c ->
                             CategoryTile(c, row * 2 + col, Modifier.weight(1f)) { categoryId = c.id }
@@ -70,33 +129,47 @@ fun ToolsTab() {
                     }
                 }
             }
-            tool == null -> {
-                PageHeader(category.title) { categoryId = null }
-                category.tools.forEachIndexed { i, t ->
-                    Container(Modifier.clip(RoundedCornerShape(28.dp)).clickable { toolId = t.id }) {
+            open == null -> {
+                PageHeader(category.title, onBack = { categoryId = null })
+                rows.forEachIndexed { i, e ->
+                    Container(Modifier.clip(RoundedCornerShape(28.dp)).clickable { toolKey = e.key }) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            ToolShape(t.iconRes, i, category.shape, 56)
+                            ToolShape(e.tool.iconRes, i, e.category.shape, 56)
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text(t.title, style = MaterialTheme.typography.titleLarge)
-                                Text(t.description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(e.tool.title, style = MaterialTheme.typography.titleLarge)
+                                Text(e.tool.description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
                 }
             }
             else -> {
-                PageHeader(tool.title) { toolId = null }
-                tool.content()
+                PageHeader(open.tool.title, onBack = { toolKey = null }) {
+                    FavoriteButton(open.key in favorites.keys) { favorites.toggle(open.key) }
+                }
+                open.tool.content()
             }
         }
     }
 }
 
 @Composable
-private fun PageHeader(title: String, onBack: () -> Unit) {
+private fun FavoriteButton(favorite: Boolean, onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            painterResource(if (favorite) R.drawable.tool_star_filled else R.drawable.tool_star),
+            contentDescription = if (favorite) "Remove from favorites" else "Add to favorites",
+            tint = if (favorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun PageHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onBack) { Icon(painterResource(com.captechomar.widgets.R.drawable.tool_back), contentDescription = "Back") }
-        Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 4.dp))
+        IconButton(onClick = onBack) { Icon(painterResource(R.drawable.tool_back), contentDescription = "Back") }
+        Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 4.dp).weight(1f))
+        trailing()
     }
 }
 
