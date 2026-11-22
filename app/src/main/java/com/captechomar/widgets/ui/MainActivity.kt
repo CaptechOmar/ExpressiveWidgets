@@ -20,7 +20,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import com.captechomar.widgets.R
+import com.captechomar.widgets.ui.tools.ToolsTab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -59,24 +63,24 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    Column(
-                        modifier = Modifier.systemBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 20.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text("Expressive Widgets", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(start = 6.dp))
-                        Text(
-                            "Tap Add, or long-press your home screen \u2192 Widgets. Long-press a widget to change its shape and colours.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 6.dp, bottom = 8.dp),
-                        )
-                        Text("Widgets", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 6.dp))
-                        // a new random shape for every widget each time the app is opened
-                        val seed = rememberSaveable { Random.nextInt() }
-                        val shapes = remember(seed) { SHAPES.shuffled(Random(seed)) }
-                        WidgetKinds.all.forEachIndexed { i, kind -> AddWidgetCard(kind, i, shapes[i % shapes.size]) }
-                        WidgetList(refresh)
+                var tab by rememberSaveable { mutableIntStateOf(0) }
+                Scaffold(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    bottomBar = {
+                        NavigationBar {
+                            NavigationBarItem(
+                                selected = tab == 0, onClick = { tab = 0 }, label = { Text("Widgets") },
+                                icon = { Icon(painterResource(R.drawable.tab_widgets), contentDescription = null) },
+                            )
+                            NavigationBarItem(
+                                selected = tab == 1, onClick = { tab = 1 }, label = { Text("Tools") },
+                                icon = { Icon(painterResource(R.drawable.tab_tools), contentDescription = null) },
+                            )
+                        }
+                    },
+                ) { inner ->
+                    Box(Modifier.padding(inner)) {
+                        if (tab == 0) WidgetsTab(refresh) else ToolsTab()
                     }
                 }
             }
@@ -88,6 +92,28 @@ class MainActivity : ComponentActivity() {
         refresh++
         com.captechomar.widgets.music.ArtFallback.refreshWallpaper(this)
         WidgetUpdater.updateAll(this)
+    }
+}
+
+@Composable
+private fun WidgetsTab(refresh: Int) {
+    Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text("Expressive Widgets", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(start = 6.dp))
+        Text(
+            "Tap Add, or long-press your home screen \u2192 Widgets. Long-press a widget to change its shape and colours.",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 6.dp, bottom = 8.dp),
+        )
+        Text("Widgets", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 6.dp))
+        // a new random shape for every widget each time the app is opened
+        val seed = rememberSaveable { Random.nextInt() }
+        val shapes = remember(seed) { SHAPES.shuffled(Random(seed)) }
+        WidgetKinds.all.forEachIndexed { i, kind -> AddWidgetCard(kind, i, shapes[i % shapes.size]) }
+        WidgetList(refresh)
     }
 }
 
