@@ -412,7 +412,7 @@ fun LevelTool() {
                     .size(boxSize)
                     .offset(
                         cx + w * (animDx + floatDx) * (if (upright) cos(Math.toRadians(tubeRotation.toDouble())).toFloat() else 1f) - boxSize / 2,
-                        cy + w * (animDy + floatDy) + (if (upright) w * (animDx) * sin(Math.toRadians(tubeRotation.toDouble())).toFloat() else 0f) - boxSize / 2,
+                        cy + w * (animDy + floatDy) + w * (if (upright) animDx * sin(Math.toRadians(tubeRotation.toDouble())).toFloat() else 0f) - boxSize / 2,
                     )
                     .graphicsLayer {
                         scaleX = breath
