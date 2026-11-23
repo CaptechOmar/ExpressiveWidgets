@@ -89,9 +89,10 @@ fun ToolsTab(onMode: (Int) -> Unit) {
 
     SideEffect { onMode(if (open == null) 0 else if (open.tool.fullScreen) 2 else 1) }
     DisposableEffect(Unit) { onDispose { onMode(0) } }
-    // predictive back: the page shrinks and slides with the gesture, then steps out one level on release
+    // predictive back: the page on top shrinks and slides with the gesture while the page beneath it shows
     val back = remember { androidx.compose.animation.core.Animatable(0f) }
     var backEdgeRight by remember { mutableStateOf(false) }
+    var committing by remember { mutableStateOf(false) }
     var instant by remember { mutableStateOf(false) }
     PredictiveBackHandler(enabled = category != null) { events ->
         try {
@@ -99,45 +100,62 @@ fun ToolsTab(onMode: (Int) -> Unit) {
                 backEdgeRight = e.swipeEdge == androidx.activity.BackEventCompat.EDGE_RIGHT
                 back.snapTo(e.progress)
             }
-            // the page swaps at once, and the shrunken frame eases back to full size
+            // let go: the top page finishes sliding away, then the one beneath is simply there
+            committing = true
+            back.animateTo(1f, androidx.compose.animation.core.tween(150))
             instant = true
             if (open != null) toolKey = null else categoryId = null
-            back.animateTo(0f, androidx.compose.animation.core.tween(180))
+            back.snapTo(0f)
+            committing = false
         } catch (c: CancellationException) {
+            committing = false
             back.animateTo(0f, androidx.compose.animation.core.tween(180))
             throw c
         }
     }
     LaunchedEffect(categoryId, toolKey) { instant = false }
-    Box(
-        Modifier.fillMaxSize().graphicsLayer {
-            val p = back.value
-            val scale = 1f - 0.1f * p
-            scaleX = scale; scaleY = scale
-            translationX = (if (backEdgeRight) -1f else 1f) * size.width * 0.06f * p
-            alpha = 1f - 0.25f * p
-            shape = RoundedCornerShape(28.dp)
-            clip = p > 0f
-        },
-    ) {
-        androidx.compose.animation.AnimatedContent(
-            targetState = categoryId to toolKey,
-            transitionSpec = {
-                if (instant) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
-                else (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180, 90)) + androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(180, 90), initialScale = 0.96f))
-                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)))
-            },
-            label = "tools-page",
-        ) { (cid, tid) ->
-            // each page is built from its own state, so a page that is fading out does not turn into the new one
-            val cat = if (cid == FAVORITES) favoritesCategory.takeIf { favoriteEntries.isNotEmpty() } else ToolCategories.all.firstOrNull { it.id == cid }
-            val pageRows = when {
-                cat == null -> emptyList()
-                cat.id == FAVORITES -> favoriteEntries
-                else -> cat.tools.map { Entry(it, cat) }
-            }
-            val page = everything.firstOrNull { it.key == tid }?.takeIf { cat != null }
-            ToolsPages(cat, page, pageRows, favoriteEntries, favoritesCategory, favorites, { categoryId = it }, { toolKey = it })
+
+    @Composable
+    fun Page(cid: String?, tid: String?) {
+        // each page is built from its own state, so a page that is fading out does not turn into the new one
+        val cat = if (cid == FAVORITES) favoritesCategory.takeIf { favoriteEntries.isNotEmpty() } else ToolCategories.all.firstOrNull { it.id == cid }
+        val pageRows = when {
+            cat == null -> emptyList()
+            cat.id == FAVORITES -> favoriteEntries
+            else -> cat.tools.map { Entry(it, cat) }
+        }
+        val page = everything.firstOrNull { it.key == tid }?.takeIf { cat != null }
+        ToolsPages(cat, page, pageRows, favoriteEntries, favoritesCategory, favorites, { categoryId = it }, { toolKey = it })
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        if (back.value > 0f) {
+            // the page this one returns to
+            Box(Modifier.fillMaxSize()) { if (open != null) Page(categoryId, null) else Page(null, null) }
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    val p = back.value
+                    val scale = 1f - 0.1f * p
+                    scaleX = scale; scaleY = scale
+                    translationX = (if (backEdgeRight) -1f else 1f) * size.width * 0.06f * p
+                    alpha = if (committing) 1f - p else 1f
+                    shape = RoundedCornerShape(28.dp)
+                    clip = p > 0f
+                }
+                .background(MaterialTheme.colorScheme.background),
+        ) {
+            androidx.compose.animation.AnimatedContent(
+                targetState = categoryId to toolKey,
+                transitionSpec = {
+                    if (instant) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
+                    else (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180, 90)) + androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(180, 90), initialScale = 0.96f))
+                        .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)))
+                },
+                label = "tools-page",
+            ) { (cid, tid) -> Page(cid, tid) }
         }
     }
 }

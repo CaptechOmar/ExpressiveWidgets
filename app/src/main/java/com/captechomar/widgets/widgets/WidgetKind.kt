@@ -84,7 +84,7 @@ object BatteryKind : WidgetKind {
                 views.setOnClickPendingIntent(
                     id,
                     PendingIntent.getActivity(
-                        context, widgetId * 10 + i, intent,
+                        context, widgetId * 10 + i, plain(intent),
                         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
                     ),
                 )
@@ -125,7 +125,7 @@ object MusicKind : WidgetKind {
         val pkg = MusicStore.load(context)?.packageName
         val launch = pkg?.let { context.packageManager.getLaunchIntentForPackage(it) }
         val open = if (launch != null) {
-            PendingIntent.getActivity(context, widgetId, launch, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            PendingIntent.getActivity(context, widgetId, plain(launch), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         } else openAppIntent(context, widgetId)
         views.setOnClickPendingIntent(R.id.btn_art, open)
     }
@@ -224,7 +224,7 @@ object WeatherKind : WidgetKind {
                 TapAction.Type.INTENT -> action.intent()?.let { openable(context, it) } ?: fallback
                 TapAction.Type.DEFAULT -> fallback
             }
-            return PendingIntent.getActivity(context, widgetId * 10 + code, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags)
+            return PendingIntent.getActivity(context, widgetId * 10 + code, plain(intent), flags)
         }
         views.setOnClickPendingIntent(R.id.widget_root, tapIntent(cfg.weather.widgetTap, settings, 1))
         val cx = tile.centerX()
@@ -307,3 +307,6 @@ internal fun openable(context: Context, intent: Intent): Intent {
     }
     return pm.getLaunchIntentForPackage(pkg) ?: intent
 }
+
+/** A copy without NEW_TASK: the system starts a widget's intent in the right task itself, and the launcher's return-to-widget animation is more reliable without it. */
+internal fun plain(intent: Intent): Intent = Intent(intent).setFlags(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK.inv())
