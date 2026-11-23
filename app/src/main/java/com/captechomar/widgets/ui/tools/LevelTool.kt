@@ -97,6 +97,7 @@ import androidx.graphics.shapes.Morph
 import com.captechomar.widgets.R
 import kotlinx.coroutines.delay
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -177,7 +178,9 @@ fun LevelTool() {
     var frozen by remember { mutableStateOf<FloatArray?>(null) } // the readings held by the lock
     var calRoll by remember { mutableFloatStateOf(prefs.getFloat("level_cal_roll", 0f)) }
     var calPitch by remember { mutableFloatStateOf(prefs.getFloat("level_cal_pitch", 0f)) }
-    var calibrated by remember { mutableStateOf(prefs.getBoolean("level_calibrated", false)) }
+    var calFlatSet by remember { mutableStateOf(prefs.getBoolean("level_calibrated", false)) }
+    var calUp by remember { mutableFloatStateOf(prefs.getFloat("level_cal_up", 0f)) }
+    var calUpSet by remember { mutableStateOf(prefs.getBoolean("level_calibrated_up", false)) }
     var sheet by remember { mutableIntStateOf(-1) }
     val locked = frozen != null
 
@@ -190,10 +193,29 @@ fun LevelTool() {
     // roll is the sideways tilt and pitch the forward one; both are measured from the calibrated surface
     val liveRoll = degrees(-smoothed[0] / g)
     val livePitch = degrees(-smoothed[1] / g)
+    // standing up: the phone is read in the screen's own frame (so it follows the display rotation) and the tilt is how far
+    // its nearest edge is from horizontal, like a spirit level held against a wall or a picture frame
+    val rotation = view.display?.rotation ?: 0
+    val sx = when (rotation) { 1 -> -smoothed[1]; 2 -> -smoothed[0]; 3 -> smoothed[1]; else -> smoothed[0] }
+    val sy = when (rotation) { 1 -> smoothed[0]; 2 -> -smoothed[1]; 3 -> -smoothed[0]; else -> smoothed[1] }
+    val upAngle = Math.toDegrees(atan2(sx.toDouble(), sy.toDouble())).toFloat()
+    val edgeTurns = (upAngle / 90f).roundToInt()
+    val liveUp = upAngle - 90f * edgeTurns
+    val tubeRotation = 90f * edgeTurns
+
+    // flat on a surface or standing up, with some give so it doesn't flip back and forth around the boundary
+    val flatness = abs(smoothed[2]) / g
+    val uprightState = remember { mutableStateOf(false) }
+    val upright = if (uprightState.value) flatness < 0.78f else flatness < 0.62f
+    SideEffect { uprightState.value = upright }
+    val calibrated = if (upright) calUpSet else calFlatSet
+
     val rawRoll = frozen?.get(0) ?: liveRoll
     val rawPitch = frozen?.get(1) ?: livePitch
-    val roll = rawRoll - calRoll
-    val pitch = rawPitch - calPitch
+    val rawUp = frozen?.getOrNull(2) ?: liveUp
+    // standing up there is only one tilt, so the shape slides along a line (to the high side, like a bubble)
+    val roll = if (upright) -(rawUp - calUp) else rawRoll - calRoll
+    val pitch = if (upright) 0f else rawPitch - calPitch
     val incline = hypot(roll, pitch)
 
     val levelState = remember { mutableStateOf(false) }
@@ -267,18 +289,30 @@ fun LevelTool() {
     }
 
     fun calibrate() {
-        calRoll = liveRoll
-        calPitch = livePitch
-        calibrated = true
-        prefs.edit().putFloat("level_cal_roll", liveRoll).putFloat("level_cal_pitch", livePitch).putBoolean("level_calibrated", true).apply()
+        if (upright) {
+            calUp = liveUp
+            calUpSet = true
+            prefs.edit().putFloat("level_cal_up", liveUp).putBoolean("level_calibrated_up", true).apply()
+        } else {
+            calRoll = liveRoll
+            calPitch = livePitch
+            calFlatSet = true
+            prefs.edit().putFloat("level_cal_roll", liveRoll).putFloat("level_cal_pitch", livePitch).putBoolean("level_calibrated", true).apply()
+        }
         if (haptic) strongTick(vibrator)
     }
 
     fun resetCalibration() {
-        calRoll = 0f
-        calPitch = 0f
-        calibrated = false
-        prefs.edit().putFloat("level_cal_roll", 0f).putFloat("level_cal_pitch", 0f).putBoolean("level_calibrated", false).apply()
+        if (upright) {
+            calUp = 0f
+            calUpSet = false
+            prefs.edit().putFloat("level_cal_up", 0f).putBoolean("level_calibrated_up", false).apply()
+        } else {
+            calRoll = 0f
+            calPitch = 0f
+            calFlatSet = false
+            prefs.edit().putFloat("level_cal_roll", 0f).putFloat("level_cal_pitch", 0f).putBoolean("level_calibrated", false).apply()
+        }
     }
 
     // the colours: mint when moving, blue when level, dimmed while the readings are locked
@@ -352,7 +386,20 @@ fun LevelTool() {
             }
 
             // the outline the shape has to settle into
-            Box(
+            if (upright) {
+                // a tube lying along the edge that is being levelled, with the target marked in the middle
+                val tubeW = w * 0.8f
+                val tubeH = minOf(outlineSize * 0.62f, h * 0.45f)
+                Box(
+                    Modifier
+                        .size(tubeW, tubeH)
+                        .offset(cx - tubeW / 2, cy - tubeH / 2)
+                        .graphicsLayer { rotationZ = tubeRotation }
+                        .border((3f + 2f * levelF).dp, ringColor, RoundedCornerShape(50)),
+                ) {
+                    Box(Modifier.align(Alignment.Center).size(tubeH * 1.12f, tubeH).border((2f + 2f * levelF).dp, ringColor, RoundedCornerShape(50)))
+                }
+            } else Box(
                 Modifier
                     .size(outlineSize)
                     .offset(cx - outlineSize / 2, cy - outlineSize / 2)
@@ -363,7 +410,10 @@ fun LevelTool() {
             Box(
                 Modifier
                     .size(boxSize)
-                    .offset(cx + w * (animDx + floatDx) - boxSize / 2, cy + w * (animDy + floatDy) - boxSize / 2)
+                    .offset(
+                        cx + w * (animDx + floatDx) * (if (upright) cos(Math.toRadians(tubeRotation.toDouble())).toFloat() else 1f) - boxSize / 2,
+                        cy + w * (animDy + floatDy) + (if (upright) w * (animDx) * sin(Math.toRadians(tubeRotation.toDouble())).toFloat() else 0f) - boxSize / 2,
+                    )
                     .graphicsLayer {
                         scaleX = breath
                         scaleY = breath
@@ -392,8 +442,10 @@ fun LevelTool() {
             // readouts: roll above, pitch and incline curving round the lower sides
             val big = (w.value * 0.07f).sp
             val small = (w.value * 0.036f).sp
-            Readout(Modifier.offset(cx - 75.dp, cy - w * 0.36f - 45.dp), signed(roll), "Roll", big, small, textColor, labelFirst = true)
-            for ((phi, value, label) in listOf(Triple(133.0, signed(pitch), "Pitch"), Triple(47.0, signed(incline), "Incline"))) {
+            if (upright) {
+                Readout(Modifier.offset(cx - 75.dp, cy - minOf(w * 0.30f, h * 0.36f) - 45.dp), signed(-roll), "Tilt", big, small, textColor, labelFirst = true)
+            } else Readout(Modifier.offset(cx - 75.dp, cy - w * 0.36f - 45.dp), signed(roll), "Roll", big, small, textColor, labelFirst = true)
+            for ((phi, value, label) in (if (upright) emptyList() else listOf(Triple(133.0, signed(pitch), "Pitch"), Triple(47.0, signed(incline), "Incline")))) {
                 val r = Math.toRadians(phi)
                 Readout(
                     Modifier
@@ -416,7 +468,7 @@ fun LevelTool() {
             ) {
                 BarButton(if (locked) R.drawable.lv_lock else R.drawable.lv_unlock, "Lock readings", locked, barFg, {
                     press()
-                    frozen = if (locked) null else floatArrayOf(liveRoll, livePitch)
+                    frozen = if (locked) null else floatArrayOf(liveRoll, livePitch, liveUp)
                 }, { sheet = 0 })
                 BarButton(R.drawable.lv_vibrate, "Haptic feedback", haptic, barFg, {
                     press()
