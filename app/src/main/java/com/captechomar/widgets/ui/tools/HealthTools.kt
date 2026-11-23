@@ -1,16 +1,25 @@
 package com.captechomar.widgets.ui.tools
 
+import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TimeInput
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 private const val KG_PER_LB = 0.45359237
 private const val CM_PER_IN = 2.54
@@ -115,5 +124,54 @@ fun WaterTool() {
                 )
             } else Text("Enter your weight.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
+    }
+}
+
+/**
+ * When to fall asleep or wake up. A night is made of sleep cycles of about 90 minutes and waking at the end of one is
+ * easier than waking in the middle, so this lists the times that line up with 3 to 6 cycles, allowing 15 minutes to drop off.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SleepTool() {
+    val context = LocalContext.current
+    var mode by rememberSaveable { mutableIntStateOf(0) }
+    val picker = rememberTimePickerState(initialHour = 7, initialMinute = 0, is24Hour = DateFormat.is24HourFormat(context))
+    val format = remember { DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT) }
+    val now = remember(mode) { LocalTime.now() }
+    val cycleMinutes = 90L
+    val fallAsleepMinutes = 15L
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Inputs { Choice(listOf("Wake up at", "Go to bed at", "Sleep now"), mode) { mode = it } }
+        if (mode != 2) {
+            Text(
+                if (mode == 0) "I want to wake up at" else "I plan to go to bed at",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            TimeInput(picker)
+        }
+        val base = if (mode == 2) now else LocalTime.of(picker.hour, picker.minute)
+        // wake-up mode lists the earliest bedtime first (6 cycles); the others list the shortest night first
+        val cycles = if (mode == 0) listOf(6, 5, 4, 3) else listOf(3, 4, 5, 6)
+        Text(
+            when (mode) {
+                0 -> "Fall asleep at one of these times:"
+                1 -> "Wake up at one of these times:"
+                else -> "If you fall asleep now, wake up at one of these times:"
+            },
+            style = MaterialTheme.typography.titleMedium,
+        )
+        for (c in cycles) {
+            val minutes = c * cycleMinutes
+            val time = if (mode == 0) base.minusMinutes(minutes + fallAsleepMinutes) else base.plusMinutes(minutes + fallAsleepMinutes)
+            val hours = minutes / 60.0
+            val sleep = if (hours % 1.0 == 0.0) "${hours.toInt()} h" else "${fmt(hours)} h"
+            val tip = if (c >= 5) " · Recommended" else ""
+            ResultCard(if (mode == 0) "Go to bed at" else "Wake up at", time.format(format), "$c cycles · $sleep of sleep$tip")
+        }
+        Text(
+            "A sleep cycle lasts about 90 minutes and 15 minutes are allowed for falling asleep. Most adults feel best after 5 or 6 cycles, which is 7.5 to 9 hours. Everyone is a little different, so treat the times as a guide.",
+            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

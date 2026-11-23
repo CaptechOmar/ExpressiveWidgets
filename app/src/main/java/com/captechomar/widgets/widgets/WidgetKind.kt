@@ -75,7 +75,7 @@ object BatteryKind : WidgetKind {
             val action = cfg.tapActions[keys[i]] ?: TapAction()
             val intent = when (action.type) {
                 TapAction.Type.NONE -> null
-                TapAction.Type.INTENT -> action.intent()
+                TapAction.Type.INTENT -> action.intent()?.let { com.captechomar.widgets.ui.OpenAppActivity.via(context, it) }
                 TapAction.Type.DEFAULT -> Intent(context, MainActivity::class.java)
             } ?: Intent(context, MainActivity::class.java).takeIf { action.type != TapAction.Type.NONE }
             if (intent == null) {
@@ -221,7 +221,7 @@ object WeatherKind : WidgetKind {
         fun tapIntent(action: TapAction, fallback: Intent, code: Int): PendingIntent? {
             val intent = when (action.type) {
                 TapAction.Type.NONE -> return null
-                TapAction.Type.INTENT -> action.intent()?.let { openable(context, it) } ?: fallback
+                TapAction.Type.INTENT -> action.intent()?.let { com.captechomar.widgets.ui.OpenAppActivity.via(context, it) } ?: fallback
                 TapAction.Type.DEFAULT -> fallback
             }
             return PendingIntent.getActivity(context, widgetId * 10 + code, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags)

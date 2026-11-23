@@ -63,7 +63,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AppTheme {
-                var tab by rememberSaveable { mutableIntStateOf(0) }
+                var tab by rememberSaveable { mutableIntStateOf(1) }
                 // what the Tools tab has open: 0 nothing, 1 a tool, 2 a full-screen tool (the ruler)
                 var toolMode by remember { mutableIntStateOf(0) }
                 val inTool = tab == 1 && toolMode != 0
@@ -104,7 +104,7 @@ private fun WidgetsTab(refresh: Int) {
         modifier = Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Expressive Widgets", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(start = 6.dp))
+        Text("Warsha", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(start = 6.dp))
         Text(
             "Tap Add, or long-press your home screen \u2192 Widgets. Long-press a widget to change its shape and colours.",
             style = MaterialTheme.typography.bodyLarge,
@@ -122,10 +122,8 @@ private fun WidgetsTab(refresh: Int) {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private val SHAPES: List<RoundedPolygon> = listOf(
-    MaterialShapes.Sunny, MaterialShapes.VerySunny, MaterialShapes.Cookie4Sided, MaterialShapes.Cookie6Sided,
-    MaterialShapes.Cookie7Sided, MaterialShapes.Cookie9Sided, MaterialShapes.Cookie12Sided, MaterialShapes.Clover4Leaf,
-    MaterialShapes.Clover8Leaf, MaterialShapes.Burst, MaterialShapes.SoftBurst, MaterialShapes.Flower,
-    MaterialShapes.Puffy, MaterialShapes.Pentagon, MaterialShapes.Gem, MaterialShapes.Ghostish,
+    MaterialShapes.Arch, MaterialShapes.Fan, MaterialShapes.Slanted, MaterialShapes.Pill, MaterialShapes.Bun,
+    MaterialShapes.Ghostish, MaterialShapes.Gem, MaterialShapes.Pentagon, MaterialShapes.Cookie6Sided,
 )
 
 /** The shape behind a widget's icon: backgrounds alternate primary, secondary and tertiary. */
@@ -165,7 +163,7 @@ private fun AddWidgetCard(kind: WidgetKind, index: Int, polygon: RoundedPolygon)
             }
         }
         if (!awm.isRequestPinAppWidgetSupported) {
-            Text("Long-press your home screen, open Widgets and pick Expressive Widgets.", style = MaterialTheme.typography.bodySmall)
+            Text("Long-press your home screen, open Widgets and pick Warsha.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }

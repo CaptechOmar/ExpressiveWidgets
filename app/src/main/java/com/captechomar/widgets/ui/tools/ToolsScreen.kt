@@ -64,7 +64,7 @@ fun ToolsTab(onMode: (Int) -> Unit) {
 
     val everything = ToolCategories.all.flatMap { c -> c.tools.map { Entry(it, c) } }
     val favoriteEntries = everything.filter { it.key in favorites.keys }
-    val favoritesCategory = ToolCategory(FAVORITES, "Favorites", "Your starred tools", R.drawable.tool_star_filled, MaterialShapes.Sunny, favoriteEntries.map { it.tool })
+    val favoritesCategory = ToolCategory(FAVORITES, "Favorites", "Your starred tools", R.drawable.tool_star_filled, MaterialShapes.Gem, favoriteEntries.map { it.tool })
 
     // if the last favorite is removed while its page is open, go back to the tiles
     LaunchedEffect(favoriteEntries.isEmpty(), categoryId) {
@@ -144,7 +144,7 @@ fun ToolsTab(onMode: (Int) -> Unit) {
                 rows.forEachIndexed { i, e ->
                     Container(Modifier.clip(RoundedCornerShape(28.dp)).clickable { toolKey = e.key }) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                            ToolShape(e.tool.iconRes, i, e.category.shape, 56)
+                            ToolShape(e.tool.iconRes, i, ROW_SHAPES[i % ROW_SHAPES.size], 56)
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(e.tool.title, style = MaterialTheme.typography.titleLarge)
                                 Text(e.tool.description, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -182,6 +182,13 @@ private fun PageHeader(title: String, onBack: () -> Unit, trailing: @Composable 
         trailing()
     }
 }
+
+/** The shapes behind the tool rows, in the order they are handed out: angular and soft ones, with few cookies. */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private val ROW_SHAPES: List<RoundedPolygon> = listOf(
+    MaterialShapes.Slanted, MaterialShapes.Pill, MaterialShapes.Bun, MaterialShapes.Pentagon, MaterialShapes.Arch,
+    MaterialShapes.Fan, MaterialShapes.Gem, MaterialShapes.Ghostish, MaterialShapes.Cookie6Sided,
+)
 
 /** Six colour pairs so neighbouring tiles never match. */
 @Composable

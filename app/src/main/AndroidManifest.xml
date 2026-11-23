@@ -82,6 +82,14 @@
         </receiver>
 
         <activity
+            android:name=".ui.OpenAppActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.ExpressiveWidgets.Trampoline" />
+
+        <activity
             android:name=".ui.WeatherRefreshActivity"
             android:exported="false"
             android:excludeFromRecents="true"

@@ -320,16 +320,13 @@ fun LevelTool() {
 
     val press = remember { { clickTick(vibrator) } }
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val outerH = maxHeight
-        // the card is a little shorter than the page: 5% off the top, 10% off the bottom
-        BoxWithConstraints(
-            Modifier.fillMaxSize().padding(top = outerH * 0.05f, bottom = outerH * 0.10f).clip(RoundedCornerShape(36.dp)),
-        ) {
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // the card runs from just under the header down to the option bar, which sits alone below it
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(36.dp))) {
             val w = maxWidth
             val h = maxHeight
             val cx = w / 2
-            val cy = (h - 96.dp) / 2 + 6.dp
+            val cy = h / 2
             val outlineSize = w * OUTLINE
             val fillSize = outlineSize * FILL
             val boxSize = fillSize * BOX
@@ -405,50 +402,50 @@ fun LevelTool() {
                     value, label, big, small, textColor, labelFirst = false,
                 )
             }
+        }
 
-            // the option bar and the flip-to-align button
+        // the option bar and the flip-to-align button
+        Row(
+            Modifier.align(Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Row(
-                Modifier.align(Alignment.BottomCenter).padding(bottom = 22.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                Modifier.clip(RoundedCornerShape(50)).background(barBg).padding(horizontal = 8.dp, vertical = 7.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Row(
-                    Modifier.clip(RoundedCornerShape(50)).background(barBg).padding(horizontal = 8.dp, vertical = 7.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    BarButton(if (locked) R.drawable.lv_lock else R.drawable.lv_unlock, "Lock readings", locked, barFg, {
+                BarButton(if (locked) R.drawable.lv_lock else R.drawable.lv_unlock, "Lock readings", locked, barFg, {
+                    press()
+                    frozen = if (locked) null else floatArrayOf(liveRoll, livePitch)
+                }, { sheet = 0 })
+                BarButton(R.drawable.lv_vibrate, "Haptic feedback", haptic, barFg, {
+                    press()
+                    haptic = !haptic
+                    prefs.edit().putBoolean("level_haptic", haptic).apply()
+                }, { sheet = 1 })
+                BarButton(R.drawable.lv_bulb, "Keep screen awake", awake, barFg, {
+                    press()
+                    awake = !awake
+                    prefs.edit().putBoolean("level_awake", awake).apply()
+                }, { sheet = 2 })
+                BarButton(
+                    if (calibrated) R.drawable.lv_reset else R.drawable.lv_calibrate,
+                    if (calibrated) "Reset calibration" else "Surface calibration", calibrated, barFg,
+                    {
                         press()
-                        frozen = if (locked) null else floatArrayOf(liveRoll, livePitch)
-                    }, { sheet = 0 })
-                    BarButton(R.drawable.lv_vibrate, "Haptic feedback", haptic, barFg, {
-                        press()
-                        haptic = !haptic
-                        prefs.edit().putBoolean("level_haptic", haptic).apply()
-                    }, { sheet = 1 })
-                    BarButton(R.drawable.lv_bulb, "Keep screen awake", awake, barFg, {
-                        press()
-                        awake = !awake
-                        prefs.edit().putBoolean("level_awake", awake).apply()
-                    }, { sheet = 2 })
-                    BarButton(
-                        if (calibrated) R.drawable.lv_reset else R.drawable.lv_calibrate,
-                        if (calibrated) "Reset calibration" else "Surface calibration", calibrated, barFg,
-                        {
-                            press()
-                            if (calibrated) resetCalibration() else calibrate()
-                        },
-                        { sheet = 3 },
-                    )
-                }
-                Box(
-                    Modifier
-                        .size(58.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(flipBg)
-                        .combinedClickable(onClick = { press() }, onLongClick = { sheet = 4 }),
-                    contentAlignment = Alignment.Center,
-                ) { Icon(painterResource(R.drawable.lv_flip), contentDescription = "Flip to align", tint = scheme.onPrimary, modifier = Modifier.size(28.dp)) }
+                        if (calibrated) resetCalibration() else calibrate()
+                    },
+                    { sheet = 3 },
+                )
             }
+            Box(
+                Modifier
+                    .size(58.dp)
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(flipBg)
+                    .combinedClickable(onClick = { press() }, onLongClick = { sheet = 4 }),
+                contentAlignment = Alignment.Center,
+            ) { Icon(painterResource(R.drawable.lv_flip), contentDescription = "Flip to align", tint = scheme.onPrimary, modifier = Modifier.size(28.dp)) }
         }
     }
 
@@ -642,14 +639,15 @@ private fun CalibrationAnimation() {
     val wave by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(3200, easing = LinearEasing)), label = "wave")
     val t = ms + LOOP_START
 
-    val lean = (calSeg(t, 2100f, 2550f) - calSeg(t, 6750f, 6900f)).coerceIn(0f, 1f)
+    val lean = (calSeg(t, 2100f, 2550f) - calSeg(t, 6740f, 6960f)).coerceIn(0f, 1f)
     val tiltIn = calLin(t, 2200f, 2720f)
-    val tiltOut = calSeg(t, 6600f, 6900f)
+    // lifting the phone takes as long as putting it down (about half a second) and eases out slowly at the end
+    val tiltOut = 1f - (1f - calLin(t, 6480f, 7000f)).pow(1.7f)
     val settle = calSeg(t, 2800f, 3600f)
     val thetaDeg = (76f * (1f - (1f - tiltIn).pow(1.7f)) + 6f * settle) * (1f - tiltOut)
-    val glow = (calSeg(t, 2450f, 2720f) - calSeg(t, 6730f, 6900f)).coerceIn(0f, 1f)
-    val dim = calSeg(t, 2450f, 2560f) * (1f - calSeg(t, 6850f, 6900f))
-    val liquidA = (1f - calSeg(t, 2560f, 2740f) + calSeg(t, 6820f, 6880f)).coerceIn(0f, 1f)
+    val glow = (calSeg(t, 2450f, 2720f) - calSeg(t, 6800f, 6950f)).coerceIn(0f, 1f)
+    val dim = calSeg(t, 2450f, 2560f) * (1f - calSeg(t, 6900f, 6980f))
+    val liquidA = (1f - calSeg(t, 2560f, 2740f) + calSeg(t, 6880f, 6960f)).coerceIn(0f, 1f)
     val blue = (calSeg(t, 3940f, 4040f) - calSeg(t, 6440f, 6500f)).coerceIn(0f, 1f)
 
     // the cookie slides off its outline while the phone leans, then glides back once the button is pressed
@@ -657,7 +655,7 @@ private fun CalibrationAnimation() {
     val glide = 1f - backOut(calLin(t, 4050f, 4480f), 1.2f)
     val dotOff = slosh * glide
     val ringOff = slosh * (1f - calSeg(t, 3930f, 4050f))
-    val ghostA = (slosh * (1f - glow) + glow) * (1f - calSeg(t, 6780f, 6900f))
+    val ghostA = (slosh * (1f - glow) + glow) * (1f - calSeg(t, 6860f, 6980f))
 
     // the icon pops up, is pressed (dips) and changes from reset to calibrate, then shrinks away
     val pop = backOut(calLin(t, 2950f, 3250f), 1.3f)
@@ -769,7 +767,7 @@ private fun CalibrationAnimation() {
                 drawFace(
                     n, wf, hf,
                     FaceState(
-                        label, glow, dim, liquidA, wave, blue, ((1f - calSeg(t, 2250f, 2400f)) + calSeg(t, 6850f, 6900f)).coerceIn(0f, 1f),
+                        label, glow, dim, liquidA, wave, blue, ((1f - calSeg(t, 2250f, 2400f)) + calSeg(t, 6930f, 7000f)).coerceIn(0f, 1f),
                         dotOff, ringOff, ghostA, settle,
                         mint.toArgb(), bubbleLight.toArgb(), blueDot.toArgb(),
                     ),

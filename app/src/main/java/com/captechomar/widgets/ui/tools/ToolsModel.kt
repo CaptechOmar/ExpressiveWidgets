@@ -34,7 +34,7 @@ class ToolCategory(
 object ToolCategories {
     val all: List<ToolCategory> = listOf(
         ToolCategory(
-            "everyday", "Everyday", "Ruler, compass, level, barometer", R.drawable.cat_everyday, MaterialShapes.Cookie9Sided,
+            "everyday", "Everyday", "Ruler, compass, level, barometer", R.drawable.cat_everyday, MaterialShapes.Arch,
             listOf(
                 Tool("ruler", "Ruler", "Measure on your screen in cm or inches", R.drawable.tool_ruler, fullScreen = true) { RulerTool() },
                 Tool("compass", "Compass", "Which way you are facing", R.drawable.tool_compass) { CompassTool() },
@@ -43,15 +43,16 @@ object ToolCategories {
             ),
         ),
         ToolCategory(
-            "health", "Health", "BMI, ideal weight, water", R.drawable.cat_health, MaterialShapes.Flower,
+            "health", "Health", "BMI, ideal weight, water, sleep", R.drawable.cat_health, MaterialShapes.Ghostish,
             listOf(
                 Tool("bmi", "BMI calculator", "Body mass index from height and weight", R.drawable.tool_bmi) { BmiTool() },
                 Tool("ideal", "Ideal weight", "A healthy range for your height", R.drawable.tool_ideal_weight) { IdealWeightTool() },
                 Tool("water", "Water intake", "How much to drink in a day", R.drawable.tool_water) { WaterTool() },
+                Tool("sleep", "Sleep calculator", "When to go to bed or wake up", R.drawable.tool_sleep) { SleepTool() },
             ),
         ),
         ToolCategory(
-            "finance", "Finance", "Tips, loans, discounts", R.drawable.cat_finance, MaterialShapes.SoftBurst,
+            "finance", "Finance", "Tips, loans, discounts", R.drawable.cat_finance, MaterialShapes.Fan,
             listOf(
                 Tool("tip", "Tip and split", "Tip a bill and share it", R.drawable.tool_tip) { TipTool() },
                 Tool("loan", "Loan payment", "Monthly payment and total interest", R.drawable.tool_loan) { LoanTool() },
