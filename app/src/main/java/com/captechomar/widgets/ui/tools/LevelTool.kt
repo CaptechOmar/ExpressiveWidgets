@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
@@ -587,8 +588,9 @@ private fun InfoSheet(
     }
 }
 
-// One loop is 5.5 s. Every moment below is timed in milliseconds of the reference recording, where the loop runs 1400 -> 6900.
-private const val LOOP_MS = 5500f
+// One loop is 5.6 s. Every moment below is timed in milliseconds of the reference recording, where the loop runs 1400 -> 6900.
+private const val LOOP_MS = 5600f
+private const val LEAD_MS = 650f
 private const val LOOP_START = 1400f
 
 private fun calLin(t: Float, a: Float, b: Float) = ((t - a) / (b - a)).coerceIn(0f, 1f)
@@ -627,7 +629,16 @@ private class FaceState(
 private fun CalibrationAnimation() {
     val scheme = MaterialTheme.colorScheme
     val loop = rememberInfiniteTransition(label = "calibration")
-    val ms by loop.animateFloat(0f, LOOP_MS, infiniteRepeatable(tween(LOOP_MS.toInt(), easing = LinearEasing)), label = "ms")
+    // the first pass waits a little longer before the phone starts to tip, like the reference
+    val clock = remember { Animatable(-LEAD_MS) }
+    LaunchedEffect(Unit) {
+        clock.animateTo(LOOP_MS, tween((LOOP_MS + LEAD_MS).toInt(), easing = LinearEasing))
+        while (true) {
+            clock.snapTo(0f)
+            clock.animateTo(LOOP_MS, tween(LOOP_MS.toInt(), easing = LinearEasing))
+        }
+    }
+    val ms = clock.value
     val wave by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(3200, easing = LinearEasing)), label = "wave")
     val t = ms + LOOP_START
 
@@ -691,6 +702,23 @@ private fun CalibrationAnimation() {
                 n.rotate(rollDeg, cx + wf / 2f, yBottom)
 
                 val left = cx - wf / 2f
+
+                // the face of the phone, flat, and the perspective transform that tips it back
+                val src = floatArrayOf(0f, 0f, wf, 0f, wf, hf, 0f, hf)
+                val dst = FloatArray(8)
+                fun project(i: Int, u: Float, v: Float) {
+                    val depth = d + (-v) * sinT
+                    val k = d / depth
+                    dst[i * 2] = cx + u * k
+                    dst[i * 2 + 1] = yBottom + v * cosT * k
+                }
+                project(0, -wf / 2f, -hf)
+                project(1, wf / 2f, -hf)
+                project(2, wf / 2f, 0f)
+                project(3, -wf / 2f, 0f)
+                val m = android.graphics.Matrix()
+                m.setPolyToPoly(src, 0, dst, 0, 4)
+
                 if (thetaDeg > 1f) {
                     // soft contact shadow under the phone and its puck
                     n.save()
@@ -712,33 +740,31 @@ private fun CalibrationAnimation() {
                         n.drawRoundRect(RectF(left + wf * 0.085f, pBottom - wf * 0.012f * lean - 1f, left + wf * 0.255f, pBottom), wf * 0.012f, wf * 0.012f, p)
                     }
 
-                    // the near edge of the phone: a thick silver slab
+                    // the body: the outline of the face extruded downwards, so the back and the face are one solid piece
+                    val outline = android.graphics.Path().apply {
+                        addRoundRect(RectF(0f, 0f, wf, hf), hf * 0.13f, hf * 0.13f, android.graphics.Path.Direction.CW)
+                        transform(m)
+                    }
+                    val layers = max(1, (bandH / 1.5f).toInt())
+                    p.color = 0xFF7E849A.toInt()
+                    n.save()
+                    n.translate(0f, bandH)
+                    n.drawPath(outline, p)
+                    n.restore()
                     p.shader = LinearGradient(
                         left, 0f, left + wf, 0f,
                         intArrayOf(0xFF9097AD.toInt(), 0xFFC4C9D8.toInt(), 0xFFD9DDE8.toInt(), 0xFFB1B7CA.toInt(), 0xFF8F95AB.toInt()),
                         floatArrayOf(0f, 0.25f, 0.4f, 0.75f, 1f), Shader.TileMode.CLAMP,
                     )
-                    n.drawRoundRect(RectF(left, yBottom - 3f, left + wf, yBottom + bandH), bandH * 0.45f, bandH * 0.45f, p)
+                    for (k in layers - 1 downTo 0) {
+                        n.save()
+                        n.translate(0f, bandH * k / layers)
+                        n.drawPath(outline, p)
+                        n.restore()
+                    }
                     p.shader = null
-                    p.color = 0x33000000
-                    n.drawRect(RectF(left + bandH * 0.4f, yBottom + bandH - 1.5f, left + wf - bandH * 0.4f, yBottom + bandH), p)
                 }
 
-                // the face of the phone, drawn flat and then tipped back with a perspective transform
-                val src = floatArrayOf(0f, 0f, wf, 0f, wf, hf, 0f, hf)
-                val dst = FloatArray(8)
-                fun project(i: Int, u: Float, v: Float) {
-                    val depth = d + (-v) * sinT
-                    val k = d / depth
-                    dst[i * 2] = cx + u * k
-                    dst[i * 2 + 1] = yBottom + v * cosT * k
-                }
-                project(0, -wf / 2f, -hf)
-                project(1, wf / 2f, -hf)
-                project(2, wf / 2f, 0f)
-                project(3, -wf / 2f, 0f)
-                val m = android.graphics.Matrix()
-                m.setPolyToPoly(src, 0, dst, 0, 4)
                 n.concat(m)
                 drawFace(
                     n, wf, hf,
