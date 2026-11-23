@@ -90,22 +90,28 @@ fun ToolsTab(onMode: (Int) -> Unit) {
     SideEffect { onMode(if (open == null) 0 else if (open.tool.fullScreen) 2 else 1) }
     DisposableEffect(Unit) { onDispose { onMode(0) } }
     // predictive back: the page shrinks and slides with the gesture, then steps out one level on release
-    var backProgress by remember { mutableFloatStateOf(0f) }
+    val back = remember { androidx.compose.animation.core.Animatable(0f) }
     var backEdgeRight by remember { mutableStateOf(false) }
+    var instant by remember { mutableStateOf(false) }
     PredictiveBackHandler(enabled = category != null) { events ->
         try {
-            events.collect { e -> backProgress = e.progress; backEdgeRight = e.swipeEdge == androidx.activity.BackEventCompat.EDGE_RIGHT }
+            events.collect { e ->
+                backEdgeRight = e.swipeEdge == androidx.activity.BackEventCompat.EDGE_RIGHT
+                back.snapTo(e.progress)
+            }
+            // the page swaps at once, and the shrunken frame eases back to full size
+            instant = true
             if (open != null) toolKey = null else categoryId = null
-            backProgress = 0f
+            back.animateTo(0f, androidx.compose.animation.core.tween(180))
         } catch (c: CancellationException) {
-            backProgress = 0f
+            back.animateTo(0f, androidx.compose.animation.core.tween(180))
             throw c
         }
     }
-    val backKey = "$categoryId/$toolKey"
+    LaunchedEffect(categoryId, toolKey) { instant = false }
     Box(
         Modifier.fillMaxSize().graphicsLayer {
-            val p = backProgress
+            val p = back.value
             val scale = 1f - 0.1f * p
             scaleX = scale; scaleY = scale
             translationX = (if (backEdgeRight) -1f else 1f) * size.width * 0.06f * p
@@ -115,13 +121,24 @@ fun ToolsTab(onMode: (Int) -> Unit) {
         },
     ) {
         androidx.compose.animation.AnimatedContent(
-            targetState = backKey,
+            targetState = categoryId to toolKey,
             transitionSpec = {
-                (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220, 60)) + androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(220, 60), initialScale = 0.94f))
-                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120)))
+                if (instant) androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
+                else (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180, 90)) + androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(180, 90), initialScale = 0.96f))
+                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(90)))
             },
             label = "tools-page",
-        ) { _ -> ToolsPages(category, open, rows, favoriteEntries, favoritesCategory, favorites, { categoryId = it }, { toolKey = it }) }
+        ) { (cid, tid) ->
+            // each page is built from its own state, so a page that is fading out does not turn into the new one
+            val cat = if (cid == FAVORITES) favoritesCategory.takeIf { favoriteEntries.isNotEmpty() } else ToolCategories.all.firstOrNull { it.id == cid }
+            val pageRows = when {
+                cat == null -> emptyList()
+                cat.id == FAVORITES -> favoriteEntries
+                else -> cat.tools.map { Entry(it, cat) }
+            }
+            val page = everything.firstOrNull { it.key == tid }?.takeIf { cat != null }
+            ToolsPages(cat, page, pageRows, favoriteEntries, favoritesCategory, favorites, { categoryId = it }, { toolKey = it })
+        }
     }
 }
 

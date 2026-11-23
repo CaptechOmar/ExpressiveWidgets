@@ -71,12 +71,15 @@ object ToolCategories {
             ),
         ),
         ToolCategory(
-            "random", "Randomizer", "Dice, coin, numbers, picker", R.drawable.cat_random, MaterialShapes.Cookie6Sided,
+            "random", "Randomizer", "Dice, coin, wheel, games", R.drawable.cat_random, MaterialShapes.Cookie6Sided,
             listOf(
                 Tool("dice", "Dice", "Roll one to four dice", R.drawable.tool_dice) { DiceTool() },
                 Tool("coin", "Coin flip", "Heads or tails", R.drawable.tool_coin) { CoinTool() },
                 Tool("number", "Random number", "Pick a number in a range", R.drawable.tool_number) { NumberTool() },
                 Tool("picker", "Pick from a list", "Let the app choose for you", R.drawable.tool_picker) { PickerTool() },
+                Tool("wheel", "Lucky wheel", "Spin a wheel of your own options", R.drawable.tool_wheel) { LuckyWheelTool() },
+                Tool("bottle", "Spin the bottle", "Spin and see who it points at", R.drawable.tool_bottle) { SpinBottleTool() },
+                Tool("rps", "Rock paper scissors", "Play against the phone", R.drawable.tool_rps) { RockPaperScissorsTool() },
             ),
         ),
     )
