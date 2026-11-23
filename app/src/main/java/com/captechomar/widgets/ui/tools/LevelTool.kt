@@ -76,6 +76,7 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate as rotateScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -214,7 +215,7 @@ fun LevelTool() {
     val rawPitch = frozen?.get(1) ?: livePitch
     val rawUp = frozen?.getOrNull(2) ?: liveUp
     // standing up there is only one tilt, so the shape slides along a line (to the high side, like a bubble)
-    val roll = if (upright) -(rawUp - calUp) else rawRoll - calRoll
+    val roll = if (upright) rawUp - calUp else rawRoll - calRoll
     val pitch = if (upright) 0f else rawPitch - calPitch
     val incline = hypot(roll, pitch)
 
@@ -360,13 +361,46 @@ fun LevelTool() {
             val w = maxWidth
             val h = maxHeight
             val cx = w / 2
-            val cy = h / 2
-            val outlineSize = w * OUTLINE
+            val landscape = w > h
+            // standing up, the shape sits in the lower part and the horizon crosses above it
+            val cy = if (upright) h * (if (landscape) 0.76f else 0.62f) else h / 2
+            val outlineSize = if (upright) minOf(w * 0.52f, h * 0.34f) else w * OUTLINE
             val fillSize = outlineSize * FILL
             val boxSize = fillSize * BOX
 
             // the background: a drop of colour with ripples spreading from it
             Canvas(Modifier.fillMaxSize()) {
+              if (upright) {
+                // a liquid surface that stays level while the phone turns: dark above, the bright fill below, with soft bands between
+                val hy = size.height * (if (landscape) 0.48f else 0.39f)
+                val edge = lerp(centre, Color.Black, 0.55f)
+                drawRect(Brush.verticalGradient(listOf(lerp(centre, Color.Black, 0.88f), edge), startY = 0f, endY = hy * 1.15f))
+                drawRect(
+                    Brush.horizontalGradient(
+                        0f to Color.Black.copy(alpha = 0.5f), 0.25f to Color.Transparent, 0.75f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.5f),
+                    ),
+                )
+                rotateScope(roll + tubeRotation, Offset(size.width / 2, hy)) {
+                    val len = maxOf(size.width, size.height) * 3f
+                    val amp = 4.dp.toPx()
+                    val step = 28.dp.toPx()
+                    fun surface(offset: Float, phase: Float): Path = Path().apply {
+                        var x = -len
+                        moveTo(x, hy + offset)
+                        while (x <= len) {
+                            lineTo(x, hy + offset + amp * sin(x / (size.width * 0.3f) * 2f * PI.toFloat() + phase))
+                            x += step
+                        }
+                        lineTo(len, hy + len)
+                        lineTo(-len, hy + len)
+                        close()
+                    }
+                    val ph = wave * 2f * PI.toFloat()
+                    drawPath(surface(-26.dp.toPx(), ph), lerp(edge, centre, 0.28f))
+                    drawPath(surface(-13.dp.toPx(), -ph + 1.7f), lerp(edge, centre, 0.55f))
+                    drawPath(surface(0f, ph + 3.3f), centre)
+                }
+              } else {
                 val c = Offset(size.width / 2, cy.toPx())
                 val pulse = 0.58f + 0.03f * sin(wave * 2f * PI.toFloat())
                 drawRect(
@@ -383,23 +417,11 @@ fun LevelTool() {
                         style = Stroke(width = size.width * (0.03f + 0.05f * ph)),
                     )
                 }
+              }
             }
 
             // the outline the shape has to settle into
-            if (upright) {
-                // a tube lying along the edge that is being levelled, with the target marked in the middle
-                val tubeW = w * 0.8f
-                val tubeH = minOf(outlineSize * 0.62f, h * 0.45f)
-                Box(
-                    Modifier
-                        .size(tubeW, tubeH)
-                        .offset(cx - tubeW / 2, cy - tubeH / 2)
-                        .graphicsLayer { rotationZ = tubeRotation }
-                        .border((3f + 2f * levelF).dp, ringColor, RoundedCornerShape(50)),
-                ) {
-                    Box(Modifier.align(Alignment.Center).size(tubeH * 1.12f, tubeH).border((2f + 2f * levelF).dp, ringColor, RoundedCornerShape(50)))
-                }
-            } else Box(
+            Box(
                 Modifier
                     .size(outlineSize)
                     .offset(cx - outlineSize / 2, cy - outlineSize / 2)
@@ -410,10 +432,7 @@ fun LevelTool() {
             Box(
                 Modifier
                     .size(boxSize)
-                    .offset(
-                        cx + w * (animDx + floatDx) * (if (upright) cos(Math.toRadians(tubeRotation.toDouble())).toFloat() else 1f) - boxSize / 2,
-                        cy + w * (animDy + floatDy) + w * (if (upright) animDx * sin(Math.toRadians(tubeRotation.toDouble())).toFloat() else 0f) - boxSize / 2,
-                    )
+                    .offset(cx + w * (animDx + floatDx) - boxSize / 2, cy + w * (animDy + floatDy) - boxSize / 2)
                     .graphicsLayer {
                         scaleX = breath
                         scaleY = breath
@@ -443,7 +462,15 @@ fun LevelTool() {
             val big = (w.value * 0.07f).sp
             val small = (w.value * 0.036f).sp
             if (upright) {
-                Readout(Modifier.offset(cx - 75.dp, cy - minOf(w * 0.30f, h * 0.36f) - 45.dp), signed(-roll), "Tilt", big, small, textColor, labelFirst = true)
+                val nf = minOf(w.value, h.value) * 0.28f
+                androidx.compose.material3.Text(
+                    signed(-roll),
+                    color = textColor,
+                    fontSize = nf.sp,
+                    lineHeight = nf.sp,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
+                    modifier = Modifier.align(Alignment.TopCenter).offset(y = h * (if (landscape) 0.42f else 0.19f) - (nf * 0.5f).dp),
+                )
             } else Readout(Modifier.offset(cx - 75.dp, cy - w * 0.36f - 45.dp), signed(roll), "Roll", big, small, textColor, labelFirst = true)
             for ((phi, value, label) in (if (upright) emptyList() else listOf(Triple(133.0, signed(pitch), "Pitch"), Triple(47.0, signed(incline), "Incline")))) {
                 val r = Math.toRadians(phi)
