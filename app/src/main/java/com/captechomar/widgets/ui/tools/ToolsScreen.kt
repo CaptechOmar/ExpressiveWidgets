@@ -105,6 +105,9 @@ fun ToolsTab(onMode: (Int) -> Unit) {
             back.animateTo(1f, androidx.compose.animation.core.tween(150))
             instant = true
             if (open != null) toolKey = null else categoryId = null
+            // keep the old page hidden until the new one is on screen, otherwise it flashes back for a frame
+            androidx.compose.runtime.withFrameNanos { }
+            kotlinx.coroutines.delay(120)
             back.snapTo(0f)
             committing = false
         } catch (c: CancellationException) {
