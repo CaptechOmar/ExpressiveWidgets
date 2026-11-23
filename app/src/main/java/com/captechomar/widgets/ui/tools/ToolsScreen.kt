@@ -1,6 +1,9 @@
 package com.captechomar.widgets.ui.tools
 
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
+import androidx.compose.animation.togetherWith
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlin.coroutines.cancellation.CancellationException
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +34,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -84,7 +89,54 @@ fun ToolsTab(onMode: (Int) -> Unit) {
 
     SideEffect { onMode(if (open == null) 0 else if (open.tool.fullScreen) 2 else 1) }
     DisposableEffect(Unit) { onDispose { onMode(0) } }
-    BackHandler(enabled = category != null) { if (open != null) toolKey = null else categoryId = null }
+    // predictive back: the page shrinks and slides with the gesture, then steps out one level on release
+    var backProgress by remember { mutableFloatStateOf(0f) }
+    var backEdgeRight by remember { mutableStateOf(false) }
+    PredictiveBackHandler(enabled = category != null) { events ->
+        try {
+            events.collect { e -> backProgress = e.progress; backEdgeRight = e.swipeEdge == androidx.activity.BackEventCompat.EDGE_RIGHT }
+            if (open != null) toolKey = null else categoryId = null
+            backProgress = 0f
+        } catch (c: CancellationException) {
+            backProgress = 0f
+            throw c
+        }
+    }
+    val backKey = "$categoryId/$toolKey"
+    Box(
+        Modifier.fillMaxSize().graphicsLayer {
+            val p = backProgress
+            val scale = 1f - 0.1f * p
+            scaleX = scale; scaleY = scale
+            translationX = (if (backEdgeRight) -1f else 1f) * size.width * 0.06f * p
+            alpha = 1f - 0.25f * p
+            shape = RoundedCornerShape(28.dp)
+            clip = p > 0f
+        },
+    ) {
+        androidx.compose.animation.AnimatedContent(
+            targetState = backKey,
+            transitionSpec = {
+                (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(220, 60)) + androidx.compose.animation.scaleIn(androidx.compose.animation.core.tween(220, 60), initialScale = 0.94f))
+                    .togetherWith(androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120)))
+            },
+            label = "tools-page",
+        ) { _ -> ToolsPages(category, open, rows, favoriteEntries, favoritesCategory, favorites, { categoryId = it }, { toolKey = it }) }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ToolsPages(
+    category: ToolCategory?,
+    open: Entry?,
+    rows: List<Entry>,
+    favoriteEntries: List<Entry>,
+    favoritesCategory: ToolCategory,
+    favorites: Favorites,
+    setCategory: (String?) -> Unit,
+    setTool: (String?) -> Unit,
+) {
 
     if (open != null && open.tool.fullScreen) {
         Box(Modifier.fillMaxSize()) {
@@ -98,7 +150,7 @@ fun ToolsTab(onMode: (Int) -> Unit) {
             ) {
                 Row {
                     FavoriteButton(open.key in favorites.keys) { favorites.toggle(open.key) }
-                    IconButton(onClick = { toolKey = null }) {
+                    IconButton(onClick = { setTool(null) }) {
                         Icon(painterResource(R.drawable.tool_back), contentDescription = "Back")
                     }
                 }
@@ -109,7 +161,7 @@ fun ToolsTab(onMode: (Int) -> Unit) {
 
     if (open != null && open.tool.fill) {
         Column(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            PageHeader(open.tool.title, onBack = { toolKey = null }) {
+            PageHeader(open.tool.title, onBack = { setTool(null) }) {
                 FavoriteButton(open.key in favorites.keys) { favorites.toggle(open.key) }
             }
             Box(Modifier.weight(1f).fillMaxWidth()) { open.tool.content() }
@@ -133,16 +185,16 @@ fun ToolsTab(onMode: (Int) -> Unit) {
                 tiles.chunked(2).forEachIndexed { row, pair ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         pair.forEachIndexed { col, c ->
-                            CategoryTile(c, row * 2 + col, Modifier.weight(1f)) { categoryId = c.id }
+                            CategoryTile(c, row * 2 + col, Modifier.weight(1f)) { setCategory(c.id) }
                         }
                         if (pair.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
             open == null -> {
-                PageHeader(category.title, onBack = { categoryId = null })
+                PageHeader(category.title, onBack = { setCategory(null) })
                 rows.forEachIndexed { i, e ->
-                    Container(Modifier.clip(RoundedCornerShape(28.dp)).clickable { toolKey = e.key }) {
+                    Container(Modifier.clip(RoundedCornerShape(28.dp)).clickable { setTool(e.key) }) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                             ToolShape(e.tool.iconRes, i, ROW_SHAPES[i % ROW_SHAPES.size], 56)
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -154,7 +206,7 @@ fun ToolsTab(onMode: (Int) -> Unit) {
                 }
             }
             else -> {
-                PageHeader(open.tool.title, onBack = { toolKey = null }) {
+                PageHeader(open.tool.title, onBack = { setTool(null) }) {
                     FavoriteButton(open.key in favorites.keys) { favorites.toggle(open.key) }
                 }
                 open.tool.content()
@@ -187,7 +239,7 @@ private fun PageHeader(title: String, onBack: () -> Unit, trailing: @Composable 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 private val ROW_SHAPES: List<RoundedPolygon> = listOf(
     MaterialShapes.Slanted, MaterialShapes.Pill, MaterialShapes.Bun, MaterialShapes.Pentagon, MaterialShapes.Arch,
-    MaterialShapes.Fan, MaterialShapes.Gem, MaterialShapes.Ghostish, MaterialShapes.Cookie6Sided,
+    MaterialShapes.Gem, MaterialShapes.Ghostish, MaterialShapes.Cookie6Sided,
 )
 
 /** Six colour pairs so neighbouring tiles never match. */

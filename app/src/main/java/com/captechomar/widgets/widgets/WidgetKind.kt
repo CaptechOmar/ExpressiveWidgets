@@ -75,7 +75,7 @@ object BatteryKind : WidgetKind {
             val action = cfg.tapActions[keys[i]] ?: TapAction()
             val intent = when (action.type) {
                 TapAction.Type.NONE -> null
-                TapAction.Type.INTENT -> action.intent()?.let { com.captechomar.widgets.ui.OpenAppActivity.via(context, it) }
+                TapAction.Type.INTENT -> action.intent()?.let { openable(context, it) }
                 TapAction.Type.DEFAULT -> Intent(context, MainActivity::class.java)
             } ?: Intent(context, MainActivity::class.java).takeIf { action.type != TapAction.Type.NONE }
             if (intent == null) {
@@ -221,7 +221,7 @@ object WeatherKind : WidgetKind {
         fun tapIntent(action: TapAction, fallback: Intent, code: Int): PendingIntent? {
             val intent = when (action.type) {
                 TapAction.Type.NONE -> return null
-                TapAction.Type.INTENT -> action.intent()?.let { com.captechomar.widgets.ui.OpenAppActivity.via(context, it) } ?: fallback
+                TapAction.Type.INTENT -> action.intent()?.let { openable(context, it) } ?: fallback
                 TapAction.Type.DEFAULT -> fallback
             }
             return PendingIntent.getActivity(context, widgetId * 10 + code, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags)
@@ -291,12 +291,19 @@ object DrawingKind : WidgetKind {
  * app's normal launch screen is used instead and the tap still does something.
  */
 internal fun openable(context: Context, intent: Intent): Intent {
-    val pkg = intent.component?.packageName ?: return intent
+    val pm = context.packageManager
+    val pkg = intent.component?.packageName ?: intent.`package` ?: return intent
     if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_LAUNCHER)) return intent
-    val ok = try {
-        intent.resolveActivity(context.packageManager) != null
+    // a screen an app lists is only usable if it is exported and open to everyone; resolving alone says yes to hidden ones
+    fun startable(i: Intent): Boolean = try {
+        val info = pm.resolveActivity(i, 0)?.activityInfo
+        info != null && info.exported && info.permission == null
     } catch (_: Throwable) {
         false
     }
-    return if (ok) intent else context.packageManager.getLaunchIntentForPackage(pkg) ?: intent
+    if (startable(intent)) return intent
+    intent.action?.takeIf { it != Intent.ACTION_MAIN }?.let { action ->
+        Intent(action).setPackage(pkg).takeIf(::startable)?.let { return it }
+    }
+    return pm.getLaunchIntentForPackage(pkg) ?: intent
 }

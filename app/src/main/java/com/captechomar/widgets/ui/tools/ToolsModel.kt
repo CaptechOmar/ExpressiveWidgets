@@ -52,11 +52,22 @@ object ToolCategories {
             ),
         ),
         ToolCategory(
-            "finance", "Finance", "Tips, loans, discounts", R.drawable.cat_finance, MaterialShapes.Fan,
+            "finance", "Finance", "Tips, loans, salary, investing", R.drawable.cat_finance, MaterialShapes.Slanted,
             listOf(
                 Tool("tip", "Tip and split", "Tip a bill and share it", R.drawable.tool_tip) { TipTool() },
                 Tool("loan", "Loan payment", "Monthly payment and total interest", R.drawable.tool_loan) { LoanTool() },
                 Tool("discount", "Discount", "The price after a sale", R.drawable.tool_discount) { DiscountTool() },
+                Tool("salary", "Salary to hourly", "Annual or monthly pay as an hourly rate", R.drawable.tool_salary) { SalaryTool() },
+                Tool("invest", "Investment growth", "See how savings grow over time", R.drawable.tool_invest) { InvestmentTool() },
+            ),
+        ),
+        ToolCategory(
+            "calculation", "Calculation", "Age, dates, time zones", R.drawable.cat_calculation, MaterialShapes.Bun,
+            listOf(
+                Tool("age", "Age calculator", "Your exact age and next birthday", R.drawable.tool_age) { AgeTool() },
+                Tool("until", "Days until", "Count the days to a date", R.drawable.tool_days_until) { DaysUntilTool() },
+                Tool("between", "Date difference", "Time between two dates", R.drawable.tool_date_diff) { DateDifferenceTool() },
+                Tool("zone", "Time zones", "Pick a country to see its time zone", R.drawable.tool_timezone) { TimeZoneTool() },
             ),
         ),
         ToolCategory(

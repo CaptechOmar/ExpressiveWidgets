@@ -104,14 +104,14 @@ private fun WidgetsTab(refresh: Int) {
         modifier = Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Warsha", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(start = 6.dp))
+        Text("Widgets", style = MaterialTheme.typography.displaySmall, modifier = Modifier.padding(start = 6.dp))
         Text(
             "Tap Add, or long-press your home screen \u2192 Widgets. Long-press a widget to change its shape and colours.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(start = 6.dp, bottom = 8.dp),
         )
-        Text("Widgets", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 6.dp))
+        Text("Add a widget", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 6.dp))
         // a new random shape for every widget each time the app is opened
         val seed = rememberSaveable { Random.nextInt() }
         val shapes = remember(seed) { SHAPES.shuffled(Random(seed)) }
