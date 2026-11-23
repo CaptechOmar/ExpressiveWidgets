@@ -10,4 +10,6 @@
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen"
     android:description="@string/widget_batteries_desc"
-    android:initialLayout="@layout/widget_image" />
+    android:initialLayout="@layout/widget_image"
+    android:widgetFeatures="reconfigurable"
+    android:configure="com.captechomar.widgets.ui.WidgetConfigActivity" />

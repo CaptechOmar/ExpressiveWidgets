@@ -10,4 +10,6 @@
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen"
     android:description="@string/widget_drawing_desc"
-    android:initialLayout="@layout/widget_drawing" />
+    android:initialLayout="@layout/widget_drawing"
+    android:widgetFeatures="reconfigurable"
+    android:configure="com.captechomar.widgets.ui.WidgetConfigActivity" />

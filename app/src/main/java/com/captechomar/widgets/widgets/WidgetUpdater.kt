@@ -20,7 +20,7 @@ object WidgetUpdater {
         val app = context.applicationContext
         val awm = AppWidgetManager.getInstance(app)
         for (id in awm.getAppWidgetIds(ComponentName(app, kind.providerClass))) {
-            update(app, awm, kind, id, force = false)
+            update(app, awm, kind, id)
         }
     }
 
@@ -29,21 +29,11 @@ object WidgetUpdater {
         update(app, AppWidgetManager.getInstance(app), kind, widgetId)
     }
 
-    /** What was last pushed to each widget. A refresh that would change nothing is skipped, so a widget isn't redrawn under the launcher mid-animation. */
-    private val last = java.util.concurrent.ConcurrentHashMap<Int, String>()
-
-    private fun update(context: Context, awm: AppWidgetManager, kind: WidgetKind, widgetId: Int, force: Boolean = true) {
+    private fun update(context: Context, awm: AppWidgetManager, kind: WidgetKind, widgetId: Int) {
         try {
             val size = sizeOf(context, awm, widgetId)
             val cfg = WidgetPrefs.load(context, widgetId, kind.defaultConfig)
             val bitmap = kind.render(context, cfg, size.wPx, size.hPx)
-            val key = run {
-                val buf = java.nio.ByteBuffer.allocate(bitmap.byteCount)
-                bitmap.copyPixelsToBuffer(buf)
-                "${kind.title}|$cfg|${size.wDp}x${size.hDp}|${bitmap.width}x${bitmap.height}|${buf.array().contentHashCode()}"
-            }
-            if (!force && last[widgetId] == key) return
-            last[widgetId] = key
             val views = RemoteViews(context.packageName, kind.layoutRes)
             views.setImageViewBitmap(R.id.widget_image, bitmap)
             kind.bindClicks(context, views, widgetId, cfg, size.wDp, size.hDp)
