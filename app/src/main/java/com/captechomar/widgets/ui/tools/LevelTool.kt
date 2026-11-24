@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -358,8 +359,11 @@ fun LevelTool() {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // the card runs from just under the header down to the option bar, which sits alone below it
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(36.dp))) {
-            val w = maxWidth
-            val h = maxHeight
+            // standing up with the screen turned a quarter away from the world (rotation locked, phone on its side) the
+            // text and the shape are laid out for the sideways card and turned back so they read the right way up
+            val sideways = upright && abs(edgeTurns) == 1
+            val w = if (sideways) maxHeight else maxWidth
+            val h = if (sideways) maxWidth else maxHeight
             val cx = w / 2
             val landscape = w > h
             // standing up, the shape sits in the lower part and the horizon crosses above it
@@ -372,33 +376,44 @@ fun LevelTool() {
             Canvas(Modifier.fillMaxSize()) {
               if (upright) {
                 // a liquid surface that stays level while the phone turns: dark above, the bright fill below, with soft bands between
-                val hy = size.height * (if (landscape) 0.48f else 0.39f)
+                val vw = w.toPx()
+                val vh = h.toPx()
+                val left = (size.width - vw) / 2
+                val top = (size.height - vh) / 2
+                val hy = top + vh * (if (landscape) 0.48f else 0.39f)
                 val edge = lerp(centre, Color.Black, 0.55f)
-                drawRect(Brush.verticalGradient(listOf(lerp(centre, Color.Black, 0.88f), edge), startY = 0f, endY = hy * 1.15f))
-                drawRect(
-                    Brush.horizontalGradient(
-                        0f to Color.Black.copy(alpha = 0.5f), 0.25f to Color.Transparent, 0.75f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.5f),
-                    ),
-                )
-                rotateScope(roll + tubeRotation, Offset(size.width / 2, hy)) {
-                    val len = maxOf(size.width, size.height) * 3f
-                    val amp = 4.dp.toPx()
-                    val step = 6.dp.toPx()
-                    fun surface(offset: Float, phase: Float): Path = Path().apply {
-                        var x = -len
-                        moveTo(x, hy + offset)
-                        while (x <= len) {
-                            lineTo(x, hy + offset + amp * sin(x / (size.width * 0.3f) * 2f * PI.toFloat() + phase))
-                            x += step
+                rotateScope(tubeRotation, Offset(size.width / 2, size.height / 2)) {
+                    drawRect(
+                        Brush.verticalGradient(listOf(lerp(centre, Color.Black, 0.88f), edge), startY = top, endY = top + (hy - top) * 1.15f),
+                        topLeft = Offset(left, top), size = androidx.compose.ui.geometry.Size(vw, vh),
+                    )
+                    drawRect(
+                        Brush.horizontalGradient(
+                            0f to Color.Black.copy(alpha = 0.5f), 0.25f to Color.Transparent, 0.75f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.5f),
+                            startX = left, endX = left + vw,
+                        ),
+                        topLeft = Offset(left, top), size = androidx.compose.ui.geometry.Size(vw, vh),
+                    )
+                    rotateScope(roll, Offset(size.width / 2, hy)) {
+                        val len = maxOf(size.width, size.height) * 3f
+                        val amp = 3.6.dp.toPx()
+                        val step = 6.dp.toPx()
+                        fun surface(offset: Float, phase: Float): Path = Path().apply {
+                            var x = -len
+                            moveTo(x, hy + offset)
+                            while (x <= len) {
+                                lineTo(x, hy + offset + amp * sin(x / (vw * 0.3f) * 2f * PI.toFloat() + phase))
+                                x += step
+                            }
+                            lineTo(len, hy + len)
+                            lineTo(-len, hy + len)
+                            close()
                         }
-                        lineTo(len, hy + len)
-                        lineTo(-len, hy + len)
-                        close()
+                        val ph = wave * 2f * PI.toFloat()
+                        drawPath(surface(-26.dp.toPx(), ph), lerp(edge, centre, 0.28f))
+                        drawPath(surface(-13.dp.toPx(), -ph + 1.7f), lerp(edge, centre, 0.55f))
+                        drawPath(surface(0f, ph + 3.3f), centre)
                     }
-                    val ph = wave * 2f * PI.toFloat()
-                    drawPath(surface(-26.dp.toPx(), ph), lerp(edge, centre, 0.28f))
-                    drawPath(surface(-13.dp.toPx(), -ph + 1.7f), lerp(edge, centre, 0.55f))
-                    drawPath(surface(0f, ph + 3.3f), centre)
                 }
               } else {
                 val c = Offset(size.width / 2, cy.toPx())
@@ -420,6 +435,7 @@ fun LevelTool() {
               }
             }
 
+            Box(Modifier.requiredSize(w, h).align(Alignment.Center).graphicsLayer { rotationZ = if (upright) tubeRotation else 0f }) {
             // the outline the shape has to settle into
             Box(
                 Modifier
@@ -483,6 +499,7 @@ fun LevelTool() {
                         .rotate((phi - 90.0).toFloat()),
                     value, label, big, small, flatLabel, labelFirst = false, valueColor = flatValue,
                 )
+            }
             }
         }
 
