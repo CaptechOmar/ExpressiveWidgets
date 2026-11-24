@@ -7,6 +7,10 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.hardware.Sensor
 import android.hardware.SensorManager
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.media.AudioAttributes
+import android.media.SoundPool
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -97,6 +101,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.graphics.shapes.Morph
 import com.captechomar.widgets.R
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.abs
@@ -152,6 +157,21 @@ private fun clickTick(v: Vibrator?) {
     }
 }
 
+/** Shared with the tool header, which is retitled while flip to align is on. */
+object LevelFlip {
+    var on by mutableStateOf(false)
+}
+
+/** lub-dub: two short pulses, the second a little softer */
+private fun heartbeat(v: Vibrator?, strong: Boolean = false) {
+    v ?: return
+    try {
+        val amp = if (strong) intArrayOf(0, 255, 0, 255) else intArrayOf(0, 255, 0, 170)
+        v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 38, 70, 46), amp, -1))
+    } catch (_: Throwable) {
+    }
+}
+
 private fun degrees(v: Float) = Math.toDegrees(asin(v.coerceIn(-1f, 1f)).toDouble()).toFloat()
 
 private fun signed(v: Float): String {
@@ -176,6 +196,10 @@ fun LevelTool() {
     val vibrator = remember { levelVibrator(context) }
 
     var haptic by remember { mutableStateOf(prefs.getBoolean("level_haptic", true)) }
+    var flipMode by remember { mutableStateOf(prefs.getBoolean("level_flip", false)) }
+    var torch by remember { mutableStateOf(prefs.getBoolean("level_torch", false)) }
+    SideEffect { LevelFlip.on = flipMode }
+    DisposableEffect(Unit) { onDispose { LevelFlip.on = false } }
     var awake by remember { mutableStateOf(prefs.getBoolean("level_awake", true)) }
     var frozen by remember { mutableStateOf<FloatArray?>(null) } // the readings held by the lock
     var calRoll by remember { mutableFloatStateOf(prefs.getFloat("level_cal_roll", 0f)) }
@@ -264,11 +288,65 @@ fun LevelTool() {
     val levelF by animateFloatAsState(if (level) 1f else 0f, tween(500), label = "levelF")
     val lockF by animateFloatAsState(if (locked) 1f else 0f, tween(400), label = "lockF")
 
-    // haptics: slow ticks on the outline, fast ticks inside it, one firm tick on arriving at level
+    // flip to align: sounds, heartbeat vibration and the flashlight all follow the zone, so the screen can face down
+    val sounds = remember {
+        SoundPool.Builder().setMaxStreams(3).setAudioAttributes(
+            AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build(),
+        ).build()
+    }
+    val soundIds = remember { intArrayOf(sounds.load(context, R.raw.flip_line, 1), sounds.load(context, R.raw.flip_circle, 1), sounds.load(context, R.raw.flip_level, 1)) }
+    DisposableEffect(Unit) { onDispose { sounds.release() } }
+    val camera = remember { context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager }
+    val torchId = remember {
+        try {
+            camera?.cameraIdList?.firstOrNull { camera.getCameraCharacteristics(it).get(CameraCharacteristics.FLASH_INFO_AVAILABLE) == true }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+    fun setTorch(on: Boolean) {
+        try {
+            torchId?.let { camera?.setTorchMode(it, on) }
+        } catch (_: Throwable) {
+        }
+    }
+    DisposableEffect(flipMode) { onDispose { setTorch(false) } }
+
     val lastZone = remember { arrayOf(Zone.NONE) }
-    LaunchedEffect(zone, haptic) {
+    LaunchedEffect(zone, haptic, flipMode, torch) {
         val before = lastZone[0]
         lastZone[0] = zone
+        if (flipMode) {
+            val flash = torch && torchId != null
+            try {
+                when (zone) {
+                    Zone.SLOW, Zone.FAST -> {
+                        val gap = if (zone == Zone.SLOW) 1237L else 510L
+                        val id = if (zone == Zone.SLOW) soundIds[0] else soundIds[1]
+                        while (true) {
+                            sounds.play(id, 1f, 1f, 1, 0, 1f)
+                            heartbeat(vibrator)
+                            if (flash) {
+                                setTorch(true)
+                                delay(90)
+                                setTorch(false)
+                                delay(gap - 90)
+                            } else delay(gap)
+                        }
+                    }
+                    Zone.LEVEL -> {
+                        sounds.play(soundIds[2], 1f, 1f, 1, 0, 1f)
+                        heartbeat(vibrator, strong = true)
+                        if (flash) setTorch(true)
+                        awaitCancellation()
+                    }
+                    Zone.NONE -> Unit
+                }
+            } finally {
+                if (flash) setTorch(false)
+            }
+            return@LaunchedEffect
+        }
         if (!haptic) return@LaunchedEffect
         when (zone) {
             Zone.SLOW -> while (true) {
@@ -325,7 +403,8 @@ fun LevelTool() {
     val textColor = lerp(centre, Color.White, 0.88f)
     val barBg = lerp(scheme.secondaryContainer, scheme.primaryContainer, levelF)
     val barFg = lerp(scheme.onSecondaryContainer, scheme.onPrimaryContainer, levelF)
-    val flipBg = lerp(scheme.primary, lerp(scheme.primary, Color.White, 0.6f), levelF)
+    val flipBase = if (flipMode) Color(0xFF6FD6FF) else scheme.primary
+    val flipBg = lerp(flipBase, lerp(flipBase, Color.White, 0.6f), levelF)
 
     val outlineShape = MaterialShapes.Cookie6Sided.toShape()
     val chain = remember {
@@ -517,7 +596,12 @@ fun LevelTool() {
                     press()
                     frozen = if (locked) null else floatArrayOf(liveRoll, livePitch, liveUp)
                 }, { sheet = 0 })
-                BarButton(R.drawable.lv_vibrate, "Haptic feedback", haptic, barFg, {
+                if (flipMode) BarButton(if (torch) R.drawable.lv_torch_on else R.drawable.lv_torch_off, "Flashlight", torch, barFg, {
+                    press()
+                    torch = !torch
+                    prefs.edit().putBoolean("level_torch", torch).apply()
+                }, { sheet = 5 })
+                else BarButton(R.drawable.lv_vibrate, "Haptic feedback", haptic, barFg, {
                     press()
                     haptic = !haptic
                     prefs.edit().putBoolean("level_haptic", haptic).apply()
@@ -542,9 +626,18 @@ fun LevelTool() {
                     .size(58.dp)
                     .clip(RoundedCornerShape(22.dp))
                     .background(flipBg)
-                    .combinedClickable(onClick = { press() }, onLongClick = { sheet = 4 }),
+                    .combinedClickable(onClick = {
+                        press()
+                        flipMode = !flipMode
+                        prefs.edit().putBoolean("level_flip", flipMode).apply()
+                    }, onLongClick = { sheet = 4 }),
                 contentAlignment = Alignment.Center,
-            ) { Icon(painterResource(R.drawable.lv_flip), contentDescription = "Flip to align", tint = scheme.onPrimary, modifier = Modifier.size(28.dp)) }
+            ) {
+                Icon(
+                    painterResource(if (flipMode) R.drawable.lv_flip_on else R.drawable.lv_flip), contentDescription = "Flip to align",
+                    tint = if (flipMode) Color(0xFF00344A) else scheme.onPrimary, modifier = Modifier.size(28.dp),
+                )
+            }
         }
     }
 
@@ -572,7 +665,19 @@ fun LevelTool() {
         )
         4 -> InfoSheet(
             R.drawable.lv_flip, "Flip to Align",
-            "Coming soon.",
+            "Level your device perfectly without needing to look at the screen. Place your phone face down and let precise audio and vibration feedback guide your adjustments.",
+            "Start Using", { sheet = -1 }, {
+                if (!flipMode) {
+                    flipMode = true
+                    prefs.edit().putBoolean("level_flip", true).apply()
+                }
+                sheet = -1
+            },
+            extra = { FlipAnimation() },
+        )
+        5 -> InfoSheet(
+            R.drawable.lv_torch_on, "Flashlight",
+            "Flash the light with every beat while you align, and keep it on once the phone is level. Handy with the screen facing down.",
             "Got it", { sheet = -1 }, { sheet = -1 },
         )
     }
@@ -1040,3 +1145,36 @@ private fun lerpInt(a: Int, b: Int, t: Float): Int {
 }
 
 private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
+
+/** The explainer: the phone turns face down and the sound, vibration and light follow the tilt. */
+@Composable
+private fun FlipAnimation() {
+    val scheme = MaterialTheme.colorScheme
+    val loop = rememberInfiniteTransition(label = "flip")
+    val t by loop.animateFloat(0f, 7000f, infiniteRepeatable(tween(7000, easing = LinearEasing)), label = "t")
+    val turn = calSeg(t, 900f, 1900f) - calSeg(t, 5900f, 6700f)
+    val beat = if (t in 2000f..5500f) (t % 600f) / 600f else 1f
+    val pulse = (1f - beat).coerceIn(0f, 1f)
+    Box(
+        Modifier.fillMaxWidth().aspectRatio(1.35f).clip(RoundedCornerShape(28.dp)).background(scheme.surfaceContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        val flipped = turn > 0.5f
+        val sx = kotlin.math.abs(cos(turn * PI.toFloat()))
+        Box(
+            Modifier.size(width = 96.dp, height = 168.dp).graphicsLayer { scaleX = sx.coerceAtLeast(0.02f); rotationZ = 0f }
+                .clip(RoundedCornerShape(18.dp)).background(if (flipped) scheme.outline else scheme.primary),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(if (flipped) R.drawable.lv_torch_on else R.drawable.lv_check),
+                null, tint = if (flipped) Color.White.copy(alpha = 0.4f + 0.6f * pulse) else scheme.onPrimary, modifier = Modifier.size(34.dp),
+            )
+        }
+        Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            for (icon in listOf(R.drawable.lv_speaker, R.drawable.lv_vibrate, R.drawable.lv_torch_on)) {
+                Icon(painterResource(icon), null, tint = scheme.primary.copy(alpha = 0.35f + 0.65f * pulse * turn), modifier = Modifier.size(26.dp))
+            }
+        }
+    }
+}
