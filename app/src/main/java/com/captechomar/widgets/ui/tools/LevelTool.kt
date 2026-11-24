@@ -383,7 +383,7 @@ fun LevelTool() {
                 rotateScope(roll + tubeRotation, Offset(size.width / 2, hy)) {
                     val len = maxOf(size.width, size.height) * 3f
                     val amp = 4.dp.toPx()
-                    val step = 28.dp.toPx()
+                    val step = 6.dp.toPx()
                     fun surface(offset: Float, phase: Float): Path = Path().apply {
                         var x = -len
                         moveTo(x, hy + offset)
@@ -459,6 +459,9 @@ fun LevelTool() {
             }
 
             // readouts: roll above, pitch and incline curving round the lower sides
+            // while not level the readouts are dark, the numbers darker than their labels; level brings back the light text
+            val flatLabel = lerp(lerp(centre, Color.Black, 0.5f), textColor, levelF)
+            val flatValue = lerp(lerp(centre, Color.Black, 0.82f), textColor, levelF)
             val big = (w.value * 0.07f).sp
             val small = (w.value * 0.036f).sp
             if (upright) {
@@ -471,14 +474,14 @@ fun LevelTool() {
                     fontWeight = androidx.compose.ui.text.font.FontWeight.ExtraBold,
                     modifier = Modifier.align(Alignment.TopCenter).offset(y = h * (if (landscape) 0.42f else 0.19f) - (nf * 0.5f).dp),
                 )
-            } else Readout(Modifier.offset(cx - 75.dp, cy - w * 0.36f - 45.dp), signed(roll), "Roll", big, small, textColor, labelFirst = true)
+            } else Readout(Modifier.offset(cx - 75.dp, cy - w * 0.36f - 45.dp), signed(roll), "Roll", big, small, flatLabel, labelFirst = true, valueColor = flatValue)
             for ((phi, value, label) in (if (upright) emptyList() else listOf(Triple(133.0, signed(pitch), "Pitch"), Triple(47.0, signed(incline), "Incline")))) {
                 val r = Math.toRadians(phi)
                 Readout(
                     Modifier
                         .offset(cx + w * (0.34f * cos(r)).toFloat() - 75.dp, cy + w * (0.34f * sin(r)).toFloat() - 45.dp)
                         .rotate((phi - 90.0).toFloat()),
-                    value, label, big, small, textColor, labelFirst = false,
+                    value, label, big, small, flatLabel, labelFirst = false, valueColor = flatValue,
                 )
             }
         }
@@ -593,11 +596,11 @@ private class MorphShape(
 }
 
 @Composable
-private fun Readout(modifier: Modifier, value: String, label: String, big: TextUnit, small: TextUnit, color: Color, labelFirst: Boolean) {
+private fun Readout(modifier: Modifier, value: String, label: String, big: TextUnit, small: TextUnit, color: Color, labelFirst: Boolean, valueColor: Color = color) {
     Box(modifier.size(150.dp, 90.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val l = @Composable { Text(label, fontSize = small, fontWeight = FontWeight.Bold, color = color.copy(alpha = 0.5f), textAlign = TextAlign.Center) }
-            val v = @Composable { Text(value, fontSize = big, fontWeight = FontWeight.Bold, color = color, textAlign = TextAlign.Center, maxLines = 1) }
+            val v = @Composable { Text(value, fontSize = big, fontWeight = FontWeight.Bold, color = valueColor, textAlign = TextAlign.Center, maxLines = 1) }
             if (labelFirst) {
                 l()
                 v()
