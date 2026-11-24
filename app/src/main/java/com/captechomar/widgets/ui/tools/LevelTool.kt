@@ -186,7 +186,7 @@ private fun smooth(x: Float): Float {
     return c * c * (3f - 2f * c)
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun LevelTool() {
     val context = LocalContext.current
