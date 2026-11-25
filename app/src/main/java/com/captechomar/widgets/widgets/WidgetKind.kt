@@ -353,7 +353,7 @@ object ShortcutsKind : WidgetKind {
             views.setViewVisibility(hit, View.VISIBLE)
             views.setViewPadding(hit, px(r.left), px(r.top), px(widthDp - r.right), px(heightDp - r.bottom))
             // while a finger is down the tile is covered by a copy of itself with tighter corners
-            views.setInt(blocks[i], "setColorFilter", ShortcutsRenderer.tileColor(col, i))
+            views.setInt(blocks[i], "setColorFilter", ShortcutsRenderer.tileColor(col, i, cfg.palette))
             // a screenless page gives a haptic tick, then opens what was picked
             val tap = Intent(context, com.captechomar.widgets.ui.ShortcutTapActivity::class.java)
                 .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)

@@ -61,19 +61,19 @@ object ShortcutsRenderer {
             )
             rects.forEachIndexed { i, r ->
                 val radius = min(r.width(), r.height()) * (if (i == 0) 0.5f else 0.25f) * k
-                paint.color = tileColor(col, i)
+                paint.color = tileColor(col, i, cfg.palette)
                 canvas.drawRoundRect(r, radius, radius, paint)
             }
         }
         if (part != Part.BASE) {
             items.forEachIndexed { i, item ->
-                drawIcon(context, canvas, item.icon, item.tint, if (i == 0) col.onAccent else col.onTile, rects[i])
+                drawIcon(context, canvas, item.icon, item.tint, iconColor(col, i, cfg.palette), rects[i])
             }
         }
         return bmp
     }
 
-    fun tileColor(col: WidgetColors, i: Int) = if (i == 0) col.accent else col.tile
+    
 
     private fun drawIcon(context: Context, canvas: Canvas, id: String, tint: Boolean, ink: Int, tile: RectF) {
         val size = min(tile.width(), tile.height()) * 0.494f
