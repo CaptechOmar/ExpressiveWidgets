@@ -20,11 +20,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.width
 import com.captechomar.widgets.R
 import com.captechomar.widgets.ui.tools.ToolsTab
+import com.captechomar.widgets.ui.tools.Choice
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -77,24 +79,36 @@ class MainActivity : ComponentActivity() {
                 var toolMode by remember { mutableIntStateOf(0) }
                 val inTool = tab == 1 && toolMode != 0
                 LaunchedEffect(pendingTool) { if (pendingTool != null) tab = 1 }
-                Scaffold(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    bottomBar = {
-                        if (!inTool) NavigationBar {
-                            NavigationBarItem(
-                                selected = tab == 0, onClick = { tab = 0 }, label = { Text("Widgets") },
-                                icon = { Icon(painterResource(R.drawable.tab_widgets), contentDescription = null) },
-                            )
-                            NavigationBarItem(
-                                selected = tab == 1, onClick = { tab = 1 }, label = { Text("Tools") },
-                                icon = { Icon(painterResource(R.drawable.tab_tools), contentDescription = null) },
-                            )
-                        }
-                    },
-                ) { inner ->
-                    Box(if (tab == 1 && toolMode == 2) Modifier else Modifier.padding(inner)) {
+                var searching by remember { mutableStateOf(false) }
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                    Box(
+                        if (tab == 1 && toolMode == 2) Modifier
+                        else Modifier.systemBarsPadding().padding(bottom = if (inTool) 0.dp else 84.dp),
+                    ) {
                         if (tab == 0) WidgetsTab(refresh) else ToolsTab(pendingTool, { pendingTool = null }) { toolMode = it }
                     }
+                    if (!inTool) {
+                        // floating navigation, styled like the ruler's cm/in and calibrate bar
+                        Row(
+                            Modifier.align(Alignment.BottomCenter).safeDrawingPadding().padding(20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Surface(shape = RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.surfaceContainer, shadowElevation = 8.dp) {
+                                Row(Modifier.padding(10.dp)) {
+                                    Choice(listOf("Widgets", "Tools"), tab, Modifier.width(220.dp)) { tab = it }
+                                }
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.primaryContainer, shadowElevation = 8.dp,
+                                modifier = Modifier.size(width = 60.dp, height = 60.dp).clip(RoundedCornerShape(32.dp)).clickable { searching = true },
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(painterResource(R.drawable.sci_lucide_search), contentDescription = "Search tools", tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                }
+                            }
+                        }
+                    }
+                    if (searching) ToolSearch(onDismiss = { searching = false }) { key -> searching = false; pendingTool = key }
                 }
             }
         }

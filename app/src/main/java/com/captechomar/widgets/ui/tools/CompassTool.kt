@@ -585,11 +585,11 @@ private fun Customize(settings: CompassSettings, selectedCorner: Int, onClearSel
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
-                selected = selectedCorner < 0 && tab == 0, onClick = { tab = 0; onClearSelection() }, label = { Text("Compass Style") },
+                selected = selectedCorner < 0 && tab == 0, onClick = { tab = 0; onClearSelection() }, label = { Text("Style") },
                 leadingIcon = { Icon(painterResource(R.drawable.tool_palette), null, Modifier.size(18.dp)) },
             )
             FilterChip(
-                selected = selectedCorner < 0 && tab == 1, onClick = { tab = 1; onClearSelection() }, label = { Text("Compass Features") },
+                selected = selectedCorner < 0 && tab == 1, onClick = { tab = 1; onClearSelection() }, label = { Text("Features") },
                 leadingIcon = { Icon(painterResource(R.drawable.tool_tune), null, Modifier.size(18.dp)) },
             )
         }
