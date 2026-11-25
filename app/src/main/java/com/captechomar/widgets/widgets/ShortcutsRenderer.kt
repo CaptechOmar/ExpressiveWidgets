@@ -63,16 +63,16 @@ object ShortcutsRenderer {
             val r = RectF(left, pad, left + tw, pad + th)
             var radius = min(tw, th) * (if (i == 0) 0.5f else 0.37f) * k
             if (press != null && press.index == i) radius *= 1f - 0.65f * press.p
-            paint.color = if (i == 0) col.accent else col.track
+            paint.color = if (i == 0) col.accent else col.tile
             canvas.drawRoundRect(r, radius, radius, paint)
-            val ink = if (i == 0) col.onAccent else col.content
+            val ink = if (i == 0) col.onAccent else col.onTile
             drawIcon(context, canvas, item.icon, item.tint, ink, r)
         }
         return bmp
     }
 
     private fun drawIcon(context: Context, canvas: Canvas, id: String, tint: Boolean, ink: Int, tile: RectF) {
-        val size = min(tile.width(), tile.height()) * 0.42f
+        val size = min(tile.width(), tile.height()) * 0.52f
         val box = RectF(tile.centerX() - size / 2, tile.centerY() - size / 2, tile.centerX() + size / 2, tile.centerY() + size / 2)
         val picture = if (id.startsWith("file:")) ShortcutFiles.bitmap(context, id) else null
         if (picture != null) {

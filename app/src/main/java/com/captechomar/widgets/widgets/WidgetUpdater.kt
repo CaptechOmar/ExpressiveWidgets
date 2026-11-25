@@ -43,6 +43,20 @@ object WidgetUpdater {
         }
     }
 
+    /** Redraws only the picture of a widget, which is much quicker than a full update; used for animations. */
+    fun updateImage(context: Context, kind: WidgetKind, widgetId: Int) {
+        try {
+            val app = context.applicationContext
+            val awm = AppWidgetManager.getInstance(app)
+            val size = sizeOf(app, awm, widgetId)
+            val cfg = WidgetPrefs.load(app, widgetId, kind.defaultConfig)
+            val views = RemoteViews(app.packageName, kind.layoutRes)
+            views.setImageViewBitmap(R.id.widget_image, kind.render(app, cfg, size.wPx, size.hPx))
+            awm.partiallyUpdateAppWidget(widgetId, views)
+        } catch (_: Throwable) {
+        }
+    }
+
     /** Height divided by width of a placed widget. */
     fun aspect(context: Context, widgetId: Int): Float {
         val s = sizeOf(context, AppWidgetManager.getInstance(context.applicationContext), widgetId)

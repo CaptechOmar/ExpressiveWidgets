@@ -36,12 +36,13 @@ class ShortcutTapActivity : Activity() {
         Thread {
             fun frame(p: Float) {
                 ShortcutsAnim.set(widgetId, index, p)
-                WidgetUpdater.update(app, ShortcutsKind, widgetId)
+                WidgetUpdater.updateImage(app, ShortcutsKind, widgetId)
             }
-            for (s in 1..3) {
-                frame(s / 3f)
-                Thread.sleep(25)
+            for (s in 1..5) {
+                frame(s / 5f)
+                Thread.sleep(35)
             }
+            Thread.sleep(60)
             runOnUiThread {
                 try {
                     startActivity(target)
@@ -51,11 +52,11 @@ class ShortcutTapActivity : Activity() {
                 finish()
                 overridePendingTransition(0, 0)
             }
-            Thread.sleep(220)
-            for (s in 1..8) {
-                val t = 1f - s / 8f
+            Thread.sleep(300)
+            for (s in 1..10) {
+                val t = 1f - s / 10f
                 frame(t * t)
-                Thread.sleep(30)
+                Thread.sleep(40)
             }
             ShortcutsAnim.set(widgetId, index, 0f)
             WidgetUpdater.update(app, ShortcutsKind, widgetId)
