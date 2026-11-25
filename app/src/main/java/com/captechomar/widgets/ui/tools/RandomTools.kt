@@ -36,6 +36,8 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -106,14 +108,14 @@ fun CoinTool() {
         verticalArrangement = Arrangement.spacedBy(56.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // the coin turns end over end in 3D while the result is being decided
+        // the coin turns side to side in 3D while the result is being decided
         val frontUp = kotlin.math.cos(Math.toRadians(turn.value.toDouble())) >= 0.0
         val lift = kotlin.math.sin(Math.PI * (turn.value / 2160f).coerceIn(0f, 1f)).toFloat()
         Box(
             Modifier
                 .size(200.dp)
                 .graphicsLayer {
-                    rotationX = turn.value
+                    rotationY = turn.value
                     cameraDistance = 14f * density
                     scaleX = 1f + 0.18f * lift
                     scaleY = 1f + 0.18f * lift
@@ -202,8 +204,9 @@ fun LuckyWheelTool() {
     val rotation = remember { Animatable(0f) }
     var spinning by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val vibrator = remember { wheelVibrator(context) }
     val colors = wheelColors
-    val ink = MaterialTheme.colorScheme.onSurface
     val pointer = MaterialTheme.colorScheme.onSurface
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Inputs {
@@ -229,7 +232,8 @@ fun LuckyWheelTool() {
                         drawIntoCanvas { c ->
                             c.nativeCanvas.save()
                             c.nativeCanvas.rotate(start + sweep / 2, center.x, center.y)
-                            paint.color = ink.toArgb()
+                            val sliceColor = colors[i % colors.size]
+                            paint.color = (if (sliceColor.luminance() > 0.5f) Color(0xFF00201A) else Color(0xFFF2FFFA)).toArgb()
                             val label = options[i].let { if (it.length > 12) it.take(11) + "…" else it }
                             c.nativeCanvas.drawText(label, center.x + size.minDimension * 0.30f, center.y + paint.textSize * 0.35f, paint)
                             c.nativeCanvas.restore()
@@ -257,7 +261,23 @@ fun LuckyWheelTool() {
                     spinning = true
                     result = null
                     val target = rotation.value + 360f * Random.nextInt(5, 8) + Random.nextFloat() * 360f
-                    rotation.animateTo(target, androidx.compose.animation.core.tween(4200, easing = androidx.compose.animation.core.FastOutSlowInEasing))
+                    // a tick every time the pointer passes a divider, like a flapper clicking over the pegs of a real wheel
+                    val n = options.size
+                    val sweepNow = 360f / n
+                    var lastPeg = kotlin.math.floor(-rotation.value / sweepNow).toInt()
+                    var lastTick = 0L
+                    rotation.animateTo(target, androidx.compose.animation.core.tween(4200, easing = androidx.compose.animation.core.FastOutSlowInEasing)) {
+                        val peg = kotlin.math.floor(-value / sweepNow).toInt()
+                        if (peg != lastPeg) {
+                            lastPeg = peg
+                            val now = android.os.SystemClock.uptimeMillis()
+                            val gap = now - lastTick
+                            if (gap >= 28) {
+                                wheelTick(vibrator, slow = gap > 140)
+                                lastTick = now
+                            }
+                        }
+                    }
                     val sweep = 360f / options.size
                     val a = ((-rotation.value) % 360f + 360f) % 360f
                     result = options[(a / sweep).toInt().coerceIn(0, options.size - 1)]
@@ -331,5 +351,23 @@ fun RockPaperScissorsTool() {
             enabled = !shuffling,
             modifier = Modifier.fillMaxWidth().height(56.dp),
         ) { Text("Pick one", style = MaterialTheme.typography.titleMedium) }
+    }
+}
+
+private fun wheelVibrator(context: android.content.Context): android.os.Vibrator? =
+    if (android.os.Build.VERSION.SDK_INT >= 31) (context.getSystemService(android.content.Context.VIBRATOR_MANAGER_SERVICE) as? android.os.VibratorManager)?.defaultVibrator
+    else context.getSystemService(android.content.Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+
+/** One peg: a crisp tick while the wheel is fast, a heavier click as it slows and each peg is felt on its own. */
+private fun wheelTick(v: android.os.Vibrator?, slow: Boolean) {
+    v ?: return
+    try {
+        val effect = when {
+            android.os.Build.VERSION.SDK_INT >= 29 ->
+                android.os.VibrationEffect.createPredefined(if (slow) android.os.VibrationEffect.EFFECT_CLICK else android.os.VibrationEffect.EFFECT_TICK)
+            else -> android.os.VibrationEffect.createOneShot(if (slow) 16 else 8, if (slow) 200 else 120)
+        }
+        v.vibrate(effect)
+    } catch (_: Throwable) {
     }
 }

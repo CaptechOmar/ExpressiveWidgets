@@ -105,7 +105,7 @@ fun ToolsTab(openTool: String? = null, onOpened: () -> Unit = {}, onMode: (Int) 
         if (parts != null && parts.size == 2) {
             instant = true
             categoryId = parts[0]
-            toolKey = parts[1]
+            toolKey = openTool
         }
         if (openTool != null) onOpened()
     }
