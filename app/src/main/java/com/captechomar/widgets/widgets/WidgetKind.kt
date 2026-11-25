@@ -17,6 +17,7 @@ import com.captechomar.widgets.data.WeatherStore
 import com.captechomar.widgets.data.WidgetConfig
 import com.captechomar.widgets.music.MusicStore
 import com.captechomar.widgets.ui.MainActivity
+import kotlin.math.max
 import kotlin.math.min
 
 /**
@@ -40,6 +41,9 @@ interface WidgetKind {
     val defaultConfig: WidgetConfig get() = WidgetConfig()
 
     fun render(context: Context, cfg: WidgetConfig, widthPx: Int, heightPx: Int): Bitmap
+
+    /** The picture put on the home screen; the same as [render] unless the widget draws part of itself in layers. */
+    fun renderWidget(context: Context, cfg: WidgetConfig, widthPx: Int, heightPx: Int): Bitmap = render(context, cfg, widthPx, heightPx)
     fun bindClicks(context: Context, views: RemoteViews, widgetId: Int, cfg: WidgetConfig, widthDp: Float, heightDp: Float)
 }
 
@@ -319,31 +323,45 @@ object ShortcutsKind : WidgetKind {
     override fun render(context: Context, cfg: WidgetConfig, widthPx: Int, heightPx: Int): Bitmap =
         ShortcutsRenderer.render(context, cfg, widthPx, heightPx)
 
+    // the card and tiles go in the background; the icons are drawn above the tap highlights so those never hide them
+    override fun renderWidget(context: Context, cfg: WidgetConfig, widthPx: Int, heightPx: Int): Bitmap =
+        ShortcutsRenderer.render(context, cfg, widthPx, heightPx, ShortcutsRenderer.Part.BASE)
+
     override fun bindClicks(
         context: Context, views: RemoteViews, widgetId: Int, cfg: WidgetConfig, widthDp: Float, heightDp: Float,
     ) {
-        val ids = intArrayOf(R.id.block0, R.id.block1, R.id.block2, R.id.block3, R.id.block4, R.id.block5)
-        val pad = (ShortcutsRenderer.PAD * heightDp * context.resources.displayMetrics.density).toInt()
-        views.setViewPadding(R.id.blocks, pad, pad, pad, pad)
-        ids.forEachIndexed { i, id ->
+        val d = context.resources.displayMetrics.density
+        var wPx = max(widthDp * d, 100f)
+        var hPx = max(heightDp * d, 40f)
+        val scale = min(1f, 900f / wPx)
+        wPx *= scale
+        hPx *= scale
+        views.setImageViewBitmap(R.id.widget_icons, ShortcutsRenderer.render(context, cfg, wPx.toInt(), hPx.toInt(), ShortcutsRenderer.Part.ICONS))
+
+        val hits = intArrayOf(R.id.hit0, R.id.hit1, R.id.hit2, R.id.hit3, R.id.hit4, R.id.hit5)
+        val blocks = intArrayOf(R.id.block0, R.id.block1, R.id.block2, R.id.block3, R.id.block4, R.id.block5)
+        val rects = ShortcutsRenderer.tiles(cfg.shortcuts.items.size, widthDp, heightDp)
+        val col = Palettes.resolve(context, cfg.palette)
+        fun px(dp: Float) = (dp * d).toInt().coerceAtLeast(0)
+        hits.forEachIndexed { i, hit ->
             val item = cfg.shortcuts.items.getOrNull(i)
-            if (item == null) {
-                views.setViewVisibility(id, View.GONE)
+            if (item == null || item.action.type == TapAction.Type.NONE) {
+                views.setViewVisibility(hit, View.GONE)
                 return@forEachIndexed
             }
-            views.setViewVisibility(id, View.VISIBLE)
-            if (item.action.type == TapAction.Type.NONE) {
-                views.setOnClickPendingIntent(id, null)
-                return@forEachIndexed
-            }
-            // a screenless page shrinks the tile's corners, then opens what was picked
-            val tap = Intent(context, com.captechomar.widgets.ui.ShortcutTapActivity::class.java)
-                .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
-                .putExtra("index", i)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            val r = rects[i]
+            views.setViewVisibility(hit, View.VISIBLE)
+            views.setViewPadding(hit, px(r.left), px(r.top), px(widthDp - r.right), px(heightDp - r.bottom))
+            // while a finger is down the tile is covered by a copy of itself with tighter corners
+            views.setInt(blocks[i], "setColorFilter", ShortcutsRenderer.tileColor(col, i))
+            val intent = (if (item.action.type == TapAction.Type.INTENT) item.action.intent()?.let { openable(context, it) } else null)
+                ?: Intent(context, MainActivity::class.java)
             views.setOnClickPendingIntent(
-                id,
-                PendingIntent.getActivity(context, widgetId * 10 + i, tap, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
+                blocks[i],
+                PendingIntent.getActivity(
+                    context, widgetId * 10 + i, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ),
             )
         }
     }

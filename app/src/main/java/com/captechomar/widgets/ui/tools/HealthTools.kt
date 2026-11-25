@@ -71,13 +71,16 @@ fun BmiTool() {
             if (h != null && w != null) {
                 val m = h / 100
                 val bmi = w / (m * m)
-                val label = when {
-                    bmi < 18.5 -> "Underweight"
-                    bmi < 25 -> "Healthy weight"
-                    bmi < 30 -> "Overweight"
-                    else -> "Obesity"
+                val (label, tone) = when {
+                    bmi < 18.5 -> "Underweight" to 0xFF066A80
+                    bmi < 25 -> "Healthy weight" to null
+                    bmi < 30 -> "Overweight" to 0xFF708A1B
+                    bmi < 35 -> "Obese (Class 1)" to 0xFF805B2A
+                    bmi < 40 -> "Obese (Class 2)" to 0xFF7F3F28
+                    else -> "Obese (Class 3)" to 0xFF822220
                 }
-                ResultCard("Your BMI", fmt(bmi), label)
+                if (tone == null) ResultCard("Your BMI", fmt(bmi), label)
+                else ResultCard("Your BMI", fmt(bmi), label, androidx.compose.ui.graphics.Color(tone), androidx.compose.ui.graphics.Color(0xFFDFFFF6))
             }
             if (h != null) {
                 val inchesOver5ft = (h / CM_PER_IN - 60).coerceAtLeast(0.0)

@@ -55,12 +55,16 @@ fun Choice(options: List<String>, selected: Int, modifier: Modifier = Modifier.f
 
 /** The answer of a calculator, big and coloured. */
 @Composable
-fun ResultCard(title: String, value: String, note: String? = null) {
-    Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
+fun ResultCard(
+    title: String, value: String, note: String? = null,
+    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primaryContainer,
+    onColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onPrimaryContainer,
+) {
+    Surface(shape = RoundedCornerShape(28.dp), color = color, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = 22.dp, vertical = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
-            Text(value, style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-            if (note != null) Text(note, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+            Text(title, style = MaterialTheme.typography.titleMedium, color = onColor)
+            Text(value, style = MaterialTheme.typography.displaySmall, color = onColor)
+            if (note != null) Text(note, style = MaterialTheme.typography.bodyMedium, color = onColor)
         }
     }
 }

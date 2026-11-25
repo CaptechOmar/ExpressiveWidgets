@@ -114,12 +114,6 @@
                 android:resource="@xml/shortcuts_widget_info" />
         </receiver>
 
-        <activity
-            android:name=".ui.ShortcutTapActivity"
-            android:exported="false"
-            android:excludeFromRecents="true"
-            android:taskAffinity=""
-            android:theme="@style/Theme.ExpressiveWidgets.Trampoline" />
 
         <receiver
             android:name=".widgets.DrawingWidgetProvider"

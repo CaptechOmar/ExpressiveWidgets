@@ -33,27 +33,13 @@ object WidgetUpdater {
         try {
             val size = sizeOf(context, awm, widgetId)
             val cfg = WidgetPrefs.load(context, widgetId, kind.defaultConfig)
-            val bitmap = kind.render(context, cfg, size.wPx, size.hPx)
+            val bitmap = kind.renderWidget(context, cfg, size.wPx, size.hPx)
             val views = RemoteViews(context.packageName, kind.layoutRes)
             views.setImageViewBitmap(R.id.widget_image, bitmap)
             kind.bindClicks(context, views, widgetId, cfg, size.wDp, size.hDp)
             awm.updateAppWidget(widgetId, views)
         } catch (_: Throwable) {
             // never let one widget crash the receiver
-        }
-    }
-
-    /** Redraws only the picture of a widget, which is much quicker than a full update; used for animations. */
-    fun updateImage(context: Context, kind: WidgetKind, widgetId: Int) {
-        try {
-            val app = context.applicationContext
-            val awm = AppWidgetManager.getInstance(app)
-            val size = sizeOf(app, awm, widgetId)
-            val cfg = WidgetPrefs.load(app, widgetId, kind.defaultConfig)
-            val views = RemoteViews(app.packageName, kind.layoutRes)
-            views.setImageViewBitmap(R.id.widget_image, kind.render(app, cfg, size.wPx, size.hPx))
-            awm.partiallyUpdateAppWidget(widgetId, views)
-        } catch (_: Throwable) {
         }
     }
 

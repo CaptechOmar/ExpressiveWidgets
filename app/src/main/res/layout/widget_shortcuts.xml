@@ -11,46 +11,88 @@
         android:contentDescription="@string/widget_shortcuts_name"
         android:scaleType="fitXY" />
 
-    <LinearLayout
-        android:id="@+id/blocks"
+    <FrameLayout
+        android:id="@+id/hit0"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="horizontal">
+        android:visibility="gone">
         <ImageView
             android:id="@+id/block0"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:visibility="gone" />
+            android:scaleType="fitXY"
+            android:src="@drawable/shortcut_press_pill" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/hit1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
         <ImageView
             android:id="@+id/block1"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:visibility="gone" />
+            android:scaleType="fitXY"
+            android:src="@drawable/shortcut_press_square" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/hit2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
         <ImageView
             android:id="@+id/block2"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:visibility="gone" />
+            android:scaleType="fitXY"
+            android:src="@drawable/shortcut_press_square" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/hit3"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
         <ImageView
             android:id="@+id/block3"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:visibility="gone" />
+            android:scaleType="fitXY"
+            android:src="@drawable/shortcut_press_square" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/hit4"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
         <ImageView
             android:id="@+id/block4"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:visibility="gone" />
+            android:scaleType="fitXY"
+            android:src="@drawable/shortcut_press_square" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/hit5"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
         <ImageView
             android:id="@+id/block5"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:visibility="gone" />
-    </LinearLayout>
+            android:scaleType="fitXY"
+            android:src="@drawable/shortcut_press_square" />
+    </FrameLayout>
+
+    <ImageView
+        android:id="@+id/widget_icons"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY" />
 </FrameLayout>
