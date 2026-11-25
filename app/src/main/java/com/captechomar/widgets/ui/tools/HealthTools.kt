@@ -3,6 +3,8 @@ package com.captechomar.widgets.ui.tools
 import android.text.format.DateFormat
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -106,6 +108,70 @@ fun BmiTool() {
                 )
             } else Text("Enter your height, and your weight for the BMI.", style = MaterialTheme.typography.bodyLarge, color = dim)
         }
+    }
+}
+
+private fun kcal(v: Double) = java.text.NumberFormat.getIntegerInstance().format(v.toLong())
+
+/** Basal metabolic rate with the Mifflin-St Jeor formula, plus what it means with different amounts of activity. */
+@Composable
+fun BmrTool() {
+    var male by rememberSaveable { mutableStateOf(true) }
+    var age by rememberSaveable { mutableStateOf("") }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Inputs {
+            Choice(listOf("Male", "Female"), if (male) 0 else 1) { male = it == 0 }
+            NumField("Age", age, { age = it.filter { c -> c.isDigit() } }, suffix = "years")
+        }
+        BodyInputs { h, w, _ ->
+            val dim = MaterialTheme.colorScheme.onSurfaceVariant
+            val a = age.toNum()
+            if (h != null && w != null && a != null && a > 0) {
+                val bmr = 10 * w + 6.25 * h - 5 * a + (if (male) 5 else -161)
+                ResultCard("Basal metabolic rate", "${kcal(bmr)} kcal/day", "Energy your body uses at complete rest")
+                Inputs {
+                    Text("Calories per day to keep your weight", style = MaterialTheme.typography.titleMedium)
+                    listOf(
+                        "Sedentary, little exercise" to 1.2,
+                        "Light, 1 to 3 days a week" to 1.375,
+                        "Moderate, 3 to 5 days a week" to 1.55,
+                        "Active, 6 to 7 days a week" to 1.725,
+                        "Very active, hard daily training" to 1.9,
+                    ).forEach { (name, f) ->
+                        androidx.compose.foundation.layout.Row(
+                            Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(name, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            Text("${kcal(bmr * f)} kcal", style = MaterialTheme.typography.titleSmall)
+                        }
+                    }
+                }
+                Text(
+                    "Uses the Mifflin-St Jeor equation, a common estimate. Real needs vary with muscle, genetics and health, so treat it as a starting point.",
+                    style = MaterialTheme.typography.bodyMedium, color = dim,
+                )
+            } else Text("Enter your age, height and weight.", style = MaterialTheme.typography.bodyLarge, color = dim)
+        }
+    }
+}
+
+/** Target heart rate zone from the age: max is 220 minus age, the zone runs from 50% to 85% of it. */
+@Composable
+fun HeartRateTool() {
+    var age by rememberSaveable { mutableStateOf("") }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Inputs { NumField("Age", age, { age = it.filter { c -> c.isDigit() } }, suffix = "years") }
+        val a = age.toNum()
+        if (a != null && a in 1.0..120.0) {
+            val max = 220 - a
+            ResultCard("Max heart rate", "${max.toInt()} bpm")
+            ResultCard("50% target", "${(max * 0.5).toInt()} bpm", "Light effort, a good warm-up pace")
+            ResultCard("85% target", "${(max * 0.85).toInt()} bpm", "Hard effort, the top of the training zone")
+            Text(
+                "Aim to keep exercise between the 50% and 85% numbers. Max heart rate is estimated as 220 minus your age, which is only a rough guide. Ask a doctor about safe limits if you have a heart condition.",
+                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else Text("Enter your age.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

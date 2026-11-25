@@ -43,11 +43,13 @@ object ToolCategories {
             ),
         ),
         ToolCategory(
-            "health", "Health", "BMI and ideal weight, water, sleep", R.drawable.cat_health, MaterialShapes.Ghostish,
+            "health", "Health", "BMI, BMR, heart rate, water, sleep", R.drawable.cat_health, MaterialShapes.Ghostish,
             listOf(
                 Tool("bmi", "BMI and ideal weight", "Body mass index and a healthy weight for your height", R.drawable.tool_bmi) { BmiTool() },
                 Tool("water", "Water intake", "How much to drink in a day", R.drawable.tool_water) { WaterTool() },
                 Tool("sleep", "Sleep calculator", "When to go to bed or wake up", R.drawable.tool_sleep) { SleepTool() },
+                Tool("bmr", "BMR", "Calories your body burns at rest", R.drawable.tool_bmr) { BmrTool() },
+                Tool("heart", "Target heart rate", "Max heart rate and training zones", R.drawable.tool_heart) { HeartRateTool() },
             ),
         ),
         ToolCategory(
@@ -66,6 +68,7 @@ object ToolCategories {
                 Tool("age", "Age calculator", "Your exact age and next birthday", R.drawable.tool_age) { AgeTool() },
                 Tool("until", "Days until", "Count the days to a date", R.drawable.tool_days_until) { DaysUntilTool() },
                 Tool("between", "Date difference", "Time between two dates", R.drawable.tool_date_diff) { DateDifferenceTool() },
+                Tool("counter", "Counter", "Count up and down from any number", R.drawable.tool_counter) { CounterTool() },
                 Tool("zone", "Time zones", "Pick a country to see its time zone", R.drawable.tool_timezone) { TimeZoneTool() },
             ),
         ),

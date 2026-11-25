@@ -354,12 +354,15 @@ object ShortcutsKind : WidgetKind {
             views.setViewPadding(hit, px(r.left), px(r.top), px(widthDp - r.right), px(heightDp - r.bottom))
             // while a finger is down the tile is covered by a copy of itself with tighter corners
             views.setInt(blocks[i], "setColorFilter", ShortcutsRenderer.tileColor(col, i))
-            val intent = (if (item.action.type == TapAction.Type.INTENT) item.action.intent()?.let { openable(context, it) } else null)
-                ?: Intent(context, MainActivity::class.java)
+            // a screenless page gives a haptic tick, then opens what was picked
+            val tap = Intent(context, com.captechomar.widgets.ui.ShortcutTapActivity::class.java)
+                .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+                .putExtra("index", i)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
             views.setOnClickPendingIntent(
                 blocks[i],
                 PendingIntent.getActivity(
-                    context, widgetId * 10 + i, intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    context, widgetId * 10 + i, tap,
                     PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
                 ),
             )

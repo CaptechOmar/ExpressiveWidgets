@@ -115,6 +115,13 @@
         </receiver>
 
 
+        <activity
+            android:name=".ui.ShortcutTapActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.ExpressiveWidgets.Trampoline" />
+
         <receiver
             android:name=".widgets.DrawingWidgetProvider"
             android:exported="true"
