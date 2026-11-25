@@ -63,31 +63,22 @@ private fun weightText(kg: Double, metric: Boolean) = if (metric) "${fmt(kg)} kg
 
 @Composable
 fun BmiTool() {
-    BodyInputs { h, w, _ ->
-        if (h != null && w != null) {
-            val m = h / 100
-            val bmi = w / (m * m)
-            val label = when {
-                bmi < 18.5 -> "Underweight"
-                bmi < 25 -> "Healthy weight"
-                bmi < 30 -> "Overweight"
-                else -> "Obesity"
-            }
-            ResultCard("Your BMI", fmt(bmi), label)
-            Text(
-                "BMI is a rough guide. It does not tell muscle from fat, so use it as a starting point and not as a diagnosis.",
-                style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        } else Text("Enter your height and weight.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-@Composable
-fun IdealWeightTool() {
     var male by rememberSaveable { mutableStateOf(true) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Inputs { Choice(listOf("Male", "Female"), if (male) 0 else 1) { male = it == 0 } }
-        BodyInputs(withWeight = false) { h, _, metric ->
+        BodyInputs { h, w, metric ->
+            val dim = MaterialTheme.colorScheme.onSurfaceVariant
+            if (h != null && w != null) {
+                val m = h / 100
+                val bmi = w / (m * m)
+                val label = when {
+                    bmi < 18.5 -> "Underweight"
+                    bmi < 25 -> "Healthy weight"
+                    bmi < 30 -> "Overweight"
+                    else -> "Obesity"
+                }
+                ResultCard("Your BMI", fmt(bmi), label)
+            }
             if (h != null) {
                 val inchesOver5ft = (h / CM_PER_IN - 60).coerceAtLeast(0.0)
                 // two common formulas: Devine and Robinson
@@ -97,12 +88,20 @@ fun IdealWeightTool() {
                 val m = h / 100
                 val lo = 18.5 * m * m
                 val hi = 24.9 * m * m
-                ResultCard("Ideal weight", weightText(avg, metric), "Healthy BMI range: ${weightText(lo, metric)} to ${weightText(hi, metric)}")
+                val diff = if (w != null) w - avg else null
+                val note = when {
+                    diff == null -> "Healthy BMI range: ${weightText(lo, metric)} to ${weightText(hi, metric)}"
+                    kotlin.math.abs(diff) < 0.5 -> "You are right at your ideal weight"
+                    diff > 0 -> "${weightText(diff, metric)} above it. Healthy range: ${weightText(lo, metric)} to ${weightText(hi, metric)}"
+                    else -> "${weightText(-diff, metric)} below it. Healthy range: ${weightText(lo, metric)} to ${weightText(hi, metric)}"
+                }
+                ResultCard("Ideal weight", weightText(avg, metric), note)
                 Text(
-                    "Average of the Devine (${weightText(devine, metric)}) and Robinson (${weightText(robinson, metric)}) formulas. They are estimates, not targets.",
-                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    "Ideal weight is the average of the Devine (${weightText(devine, metric)}) and Robinson (${weightText(robinson, metric)}) formulas. " +
+                        "BMI and these formulas are rough guides. They do not tell muscle from fat, so use them as a starting point and not as a diagnosis.",
+                    style = MaterialTheme.typography.bodyMedium, color = dim,
                 )
-            } else Text("Enter your height.", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            } else Text("Enter your height, and your weight for the BMI.", style = MaterialTheme.typography.bodyLarge, color = dim)
         }
     }
 }

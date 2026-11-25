@@ -120,7 +120,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 // Geometry is in fractions of the card width so the same numbers drive the drawing and the haptics.
-private const val OUTLINE = 0.405f // width of the outline shape
+private const val OUTLINE = 0.47f // width of the outline shape
 private const val FILL = 0.82f // the floating shape, relative to the outline, when level
 private const val DRIFT = 0.0048f // how far the shape drifts per degree of tilt
 private const val LEVEL_IN = 1.0f // degrees at which it counts as level
@@ -602,15 +602,16 @@ fun LevelTool() {
             if (volF > 0.01f) Row(
                 Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+                    .fillMaxWidth(0.71f)
+                    .height(72.dp)
                     .graphicsLayer {
                         translationY = (1f - volF) * (size.height + 24.dp.toPx())
                         alpha = volF
                     }
-                    .clip(RoundedCornerShape(36.dp))
+                    .clip(RoundedCornerShape(24.dp))
                     .background(barBg)
-                    .padding(horizontal = 22.dp, vertical = 6.dp),
+                    .padding(horizontal = 22.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {

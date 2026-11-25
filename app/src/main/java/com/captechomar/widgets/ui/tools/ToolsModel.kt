@@ -43,10 +43,9 @@ object ToolCategories {
             ),
         ),
         ToolCategory(
-            "health", "Health", "BMI, ideal weight, water, sleep", R.drawable.cat_health, MaterialShapes.Ghostish,
+            "health", "Health", "BMI and ideal weight, water, sleep", R.drawable.cat_health, MaterialShapes.Ghostish,
             listOf(
-                Tool("bmi", "BMI calculator", "Body mass index from height and weight", R.drawable.tool_bmi) { BmiTool() },
-                Tool("ideal", "Ideal weight", "A healthy range for your height", R.drawable.tool_ideal_weight) { IdealWeightTool() },
+                Tool("bmi", "BMI and ideal weight", "Body mass index and a healthy weight for your height", R.drawable.tool_bmi) { BmiTool() },
                 Tool("water", "Water intake", "How much to drink in a day", R.drawable.tool_water) { WaterTool() },
                 Tool("sleep", "Sleep calculator", "When to go to bed or wake up", R.drawable.tool_sleep) { SleepTool() },
             ),
