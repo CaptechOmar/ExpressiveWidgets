@@ -80,7 +80,8 @@ class MainActivity : ComponentActivity() {
                 val inTool = tab == 1 && toolMode != 0
                 LaunchedEffect(pendingTool) { if (pendingTool != null) tab = 1 }
                 var searching by remember { mutableStateOf(false) }
-                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                  Box(Modifier.fillMaxSize()) {
                     Box(
                         if (tab == 1 && toolMode == 2) Modifier
                         else Modifier.systemBarsPadding().padding(bottom = if (inTool) 0.dp else 84.dp),
@@ -112,6 +113,7 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                     if (searching) ToolSearch(onDismiss = { searching = false }) { key -> searching = false; pendingTool = key }
+                  }
                 }
             }
         }
