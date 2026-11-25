@@ -298,7 +298,15 @@ private fun pair(index: Int): Pair<Color, Color> {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CategoryTile(category: ToolCategory, index: Int, modifier: Modifier, onClick: () -> Unit) {
-    val (bg, fg) = pair(index)
+    val fallback = pair(index)
+    // the colours of the weather tiles: Feels Like red, UV orange, Air Quality green and Pressure purple
+    val (bg, fg) = when (category.id) {
+        FAVORITES -> Color(0xFFA34D4C) to Color(0xFFFFE9E7)
+        "everyday" -> Color(0xFFFF9F00) to Color(0xFF3B2400)
+        "health" -> Color(0xFF0C9180) to Color(0xFFD6FFF6)
+        "finance" -> Color(0xFF7C4DFF) to Color(0xFFF1E9FF)
+        else -> fallback
+    }
     Box(
         modifier.aspectRatio(1f).clip(category.shape.toShape()).background(bg).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
