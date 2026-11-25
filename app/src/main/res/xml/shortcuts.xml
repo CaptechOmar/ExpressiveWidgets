@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="ruler"
+        android:enabled="true"
+        android:icon="@drawable/sc_ruler"
+        android:shortcutShortLabel="@string/shortcut_ruler"
+        android:shortcutLongLabel="@string/shortcut_ruler">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.captechomar.widgets"
+            android:targetClass="com.captechomar.widgets.ui.MainActivity">
+            <extra android:name="open_tool" android:value="everyday/ruler" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="compass"
+        android:enabled="true"
+        android:icon="@drawable/sc_compass"
+        android:shortcutShortLabel="@string/shortcut_compass"
+        android:shortcutLongLabel="@string/shortcut_compass">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.captechomar.widgets"
+            android:targetClass="com.captechomar.widgets.ui.MainActivity">
+            <extra android:name="open_tool" android:value="everyday/compass" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="level"
+        android:enabled="true"
+        android:icon="@drawable/sc_level"
+        android:shortcutShortLabel="@string/shortcut_level"
+        android:shortcutLongLabel="@string/shortcut_level">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.captechomar.widgets"
+            android:targetClass="com.captechomar.widgets.ui.MainActivity">
+            <extra android:name="open_tool" android:value="everyday/level" />
+        </intent>
+    </shortcut>
+</shortcuts>

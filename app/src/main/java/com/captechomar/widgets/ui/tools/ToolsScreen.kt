@@ -44,6 +44,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -64,7 +66,7 @@ private class Entry(val tool: Tool, val category: ToolCategory) {
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ToolsTab(onMode: (Int) -> Unit) {
+fun ToolsTab(openTool: String? = null, onOpened: () -> Unit = {}, onMode: (Int) -> Unit) {
     val favorites = rememberFavorites()
     var categoryId by rememberSaveable { mutableStateOf<String?>(null) }
     var toolKey by rememberSaveable { mutableStateOf<String?>(null) }
@@ -97,6 +99,16 @@ fun ToolsTab(onMode: (Int) -> Unit) {
     var backEdgeRight by remember { mutableStateOf(false) }
     var committing by remember { mutableStateOf(false) }
     var instant by remember { mutableStateOf(true) }
+    // an app-icon shortcut opens a tool straight away, given as "category/tool"
+    LaunchedEffect(openTool) {
+        val parts = openTool?.split('/')
+        if (parts != null && parts.size == 2) {
+            instant = true
+            categoryId = parts[0]
+            toolKey = parts[1]
+        }
+        if (openTool != null) onOpened()
+    }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     suspend fun commitPop() {
@@ -158,7 +170,9 @@ fun ToolsTab(onMode: (Int) -> Unit) {
                         shape = RoundedCornerShape(28.dp)
                         clip = p > 0f || enter.value < 1f
                     }
-                    .background(MaterialTheme.colorScheme.background),
+                    .background(MaterialTheme.colorScheme.background)
+                    // blank space must not let taps through to the page underneath
+                    .pointerInput(Unit) { detectTapGestures { } },
             ) { Page(categoryId, toolKey) }
         }
     }

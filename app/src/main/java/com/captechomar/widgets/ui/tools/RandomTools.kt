@@ -4,6 +4,10 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -92,13 +96,36 @@ fun CoinTool() {
     var flipping by remember { mutableStateOf(false) }
     val turn = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp), horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Surface(shape = androidx.compose.foundation.shape.CircleShape, color = MaterialTheme.colorScheme.tertiaryContainer, modifier = Modifier.size(180.dp).rotate(turn.value)) {
-            Box(contentAlignment = Alignment.Center) {
-                Text(
-                    if (flipping) "…" else side.ifEmpty { "?" }, style = MaterialTheme.typography.displaySmall,
-                    color = MaterialTheme.colorScheme.onTertiaryContainer,
-                )
+    val press = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by press.collectIsPressedAsState()
+    // the big pill squares off a little while it is held down
+    val radius by androidx.compose.animation.core.animateDpAsState(if (pressed) 30.dp else 60.dp, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium), label = "radius")
+    Column(
+        Modifier.fillMaxWidth().heightIn(min = 560.dp),
+        verticalArrangement = Arrangement.spacedBy(56.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        // the coin turns end over end in 3D while the result is being decided
+        val frontUp = kotlin.math.cos(Math.toRadians(turn.value.toDouble())) >= 0.0
+        val lift = kotlin.math.sin(Math.PI * (turn.value / 2160f).coerceIn(0f, 1f)).toFloat()
+        Box(
+            Modifier
+                .size(200.dp)
+                .graphicsLayer {
+                    rotationX = turn.value
+                    cameraDistance = 14f * density
+                    scaleX = 1f + 0.18f * lift
+                    scaleY = 1f + 0.18f * lift
+                }
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(MaterialTheme.colorScheme.tertiaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (frontUp) {
+                if (flipping) androidx.compose.material3.Icon(
+                    androidx.compose.ui.res.painterResource(com.captechomar.widgets.R.drawable.tool_coin), contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.size(96.dp),
+                ) else Text(side.ifEmpty { "?" }, style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.onTertiaryContainer)
             }
         }
         Button(
@@ -106,15 +133,17 @@ fun CoinTool() {
                 scope.launch {
                     flipping = true
                     turn.snapTo(0f)
-                    turn.animateTo(720f, spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessVeryLow))
+                    turn.animateTo(2160f, androidx.compose.animation.core.tween(1800, easing = androidx.compose.animation.core.FastOutSlowInEasing))
                     side = if (Random.nextBoolean()) "Heads" else "Tails"
                     turn.snapTo(0f)
                     flipping = false
                 }
             },
             enabled = !flipping,
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-        ) { Text("Flip", style = MaterialTheme.typography.titleMedium) }
+            shape = RoundedCornerShape(radius),
+            interactionSource = press,
+            modifier = Modifier.fillMaxWidth(0.85f).height(120.dp),
+        ) { Text("Flip", style = MaterialTheme.typography.headlineMedium) }
     }
 }
 
@@ -270,53 +299,36 @@ fun SpinBottleTool() {
     }
 }
 
-/** Rock paper scissors against the phone, with a running score. */
+/** Rock, paper or scissors: one button, one random pick shown as a single-colour icon. */
 @Composable
 fun RockPaperScissorsTool() {
     val names = listOf("Rock", "Paper", "Scissors")
-    val icons = listOf("✊", "✋", "✌️")
-    var mine by rememberSaveable { mutableIntStateOf(-1) }
-    var theirs by rememberSaveable { mutableIntStateOf(-1) }
-    var wins by rememberSaveable { mutableIntStateOf(0) }
-    var losses by rememberSaveable { mutableIntStateOf(0) }
-    var draws by rememberSaveable { mutableIntStateOf(0) }
+    val icons = listOf(com.captechomar.widgets.R.drawable.rps_rock, com.captechomar.widgets.R.drawable.rps_paper, com.captechomar.widgets.R.drawable.rps_scissors)
+    var pick by rememberSaveable { mutableIntStateOf(-1) }
     var shuffling by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            listOf("You" to mine, "Phone" to theirs).forEach { (who, pick) ->
-                Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.weight(1f)) {
-                    Column(Modifier.padding(16.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(who, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                        Text(if (pick < 0) "?" else icons[pick], style = MaterialTheme.typography.displayLarge, modifier = Modifier.padding(vertical = 8.dp))
-                        Text(if (pick < 0) " " else names[pick], style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
-                    }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(shape = RoundedCornerShape(36.dp), color = MaterialTheme.colorScheme.secondaryContainer, modifier = Modifier.fillMaxWidth().height(280.dp)) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                if (pick < 0) Text("?", style = MaterialTheme.typography.displayLarge, color = MaterialTheme.colorScheme.onSecondaryContainer)
+                else androidx.compose.material3.Icon(
+                    androidx.compose.ui.res.painterResource(icons[pick]), contentDescription = names[pick],
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.size(128.dp),
+                )
+                Text(if (pick < 0) " " else names[pick], style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSecondaryContainer, modifier = Modifier.padding(top = 12.dp))
+            }
+        }
+        Button(
+            onClick = {
+                scope.launch {
+                    shuffling = true
+                    repeat(8) { pick = Random.nextInt(3); delay(70) }
+                    pick = Random.nextInt(3)
+                    shuffling = false
                 }
-            }
-        }
-        if (mine >= 0 && theirs >= 0 && !shuffling) {
-            val outcome = when ((mine - theirs + 3) % 3) { 0 -> "It's a draw"; 1 -> "You win"; else -> "You lose" }
-            ResultCard(outcome, "${names[mine]} vs ${names[theirs]}")
-        }
-        androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            names.forEachIndexed { i, n ->
-                Button(
-                    onClick = {
-                        scope.launch {
-                            shuffling = true
-                            mine = i
-                            repeat(7) { theirs = Random.nextInt(3); delay(70) }
-                            theirs = Random.nextInt(3)
-                            when ((mine - theirs + 3) % 3) { 0 -> draws++; 1 -> wins++; else -> losses++ }
-                            shuffling = false
-                        }
-                    },
-                    enabled = !shuffling,
-                    modifier = Modifier.weight(1f),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 12.dp),
-                ) { Text("${icons[i]} $n", maxLines = 1) }
-            }
-        }
-        Text("Score: $wins wins, $losses losses, $draws draws", style = MaterialTheme.typography.bodyLarge, color = hint)
+            },
+            enabled = !shuffling,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+        ) { Text("Pick one", style = MaterialTheme.typography.titleMedium) }
     }
 }

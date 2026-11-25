@@ -16,4 +16,7 @@
     <string name="music_previous">Previous track</string>
     <string name="music_next">Next track</string>
     <string name="music_open_player">Open music player</string>
+    <string name="shortcut_ruler">Ruler</string>
+    <string name="shortcut_compass">Compass</string>
+    <string name="shortcut_level">Level</string>
 </resources>

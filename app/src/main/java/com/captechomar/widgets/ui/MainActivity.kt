@@ -29,6 +29,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,16 +59,24 @@ import com.captechomar.widgets.widgets.WidgetUpdater
 
 class MainActivity : ComponentActivity() {
     private var refresh by mutableIntStateOf(0)
+    private var pendingTool by mutableStateOf<String?>(null)
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        pendingTool = intent.getStringExtra("open_tool")
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (savedInstanceState == null) pendingTool = intent?.getStringExtra("open_tool")
         setContent {
             AppTheme {
                 var tab by rememberSaveable { mutableIntStateOf(1) }
                 // what the Tools tab has open: 0 nothing, 1 a tool, 2 a full-screen tool (the ruler)
                 var toolMode by remember { mutableIntStateOf(0) }
                 val inTool = tab == 1 && toolMode != 0
+                LaunchedEffect(pendingTool) { if (pendingTool != null) tab = 1 }
                 Scaffold(
                     containerColor = MaterialTheme.colorScheme.background,
                     bottomBar = {
@@ -83,7 +93,7 @@ class MainActivity : ComponentActivity() {
                     },
                 ) { inner ->
                     Box(if (tab == 1 && toolMode == 2) Modifier else Modifier.padding(inner)) {
-                        if (tab == 0) WidgetsTab(refresh) else ToolsTab { toolMode = it }
+                        if (tab == 0) WidgetsTab(refresh) else ToolsTab(pendingTool, { pendingTool = null }) { toolMode = it }
                     }
                 }
             }
