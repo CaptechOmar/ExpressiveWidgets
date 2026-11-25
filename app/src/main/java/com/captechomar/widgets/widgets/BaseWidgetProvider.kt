@@ -33,6 +33,8 @@ class MusicWidgetProvider : BaseWidgetProvider(MusicKind)
 
 class SavingsWidgetProvider : BaseWidgetProvider(SavingsKind)
 
+class ShortcutsWidgetProvider : BaseWidgetProvider(ShortcutsKind)
+
 class DrawingWidgetProvider : BaseWidgetProvider(DrawingKind)
 
 class WeatherWidgetProvider : BaseWidgetProvider(WeatherKind) {

@@ -28,6 +28,8 @@ data class WidgetConfig(
     val savings: SavingsConfig = SavingsConfig(),
     /** Settings of the weather widget. */
     val weather: WeatherConfig = WeatherConfig(),
+    /** Tiles of the shortcuts widget. */
+    val shortcuts: ShortcutsConfig = ShortcutsConfig(),
     val tapActions: Map<String, TapAction> = emptyMap(),
     /** True once the devices were picked by hand. Until then an empty list means the automatic pick. */
     val manualDevices: Boolean = false,
@@ -92,6 +94,7 @@ object WidgetPrefs {
             noArtMode = sp.getString("${widgetId}_no_art", defaults.noArtMode) ?: defaults.noArtMode,
             savings = SavingsConfig.fromJson(sp.getString("${widgetId}_savings", null)),
             weather = WeatherConfig.fromJson(sp.getString("${widgetId}_weather", null)),
+            shortcuts = ShortcutsConfig.fromJson(sp.getString("${widgetId}_shortcuts", null)),
             tapActions = readActions(sp, widgetId),
             manualDevices = sp.getBoolean("${widgetId}_manual", false),
             deviceOrder = readList(sp, "${widgetId}_order"),
@@ -110,6 +113,7 @@ object WidgetPrefs {
             .putString("${widgetId}_no_art", cfg.noArtMode)
             .putString("${widgetId}_savings", cfg.savings.toJson())
             .putString("${widgetId}_weather", cfg.weather.toJson())
+            .putString("${widgetId}_shortcuts", cfg.shortcuts.toJson())
         val actions = JSONObject()
         cfg.tapActions.filterValues { it.type != TapAction.Type.DEFAULT }.forEach { (k, v) -> actions.put(k, v.toJson()) }
         e.putString("${widgetId}_actions", actions.toString())
@@ -127,7 +131,9 @@ object WidgetPrefs {
     fun delete(context: Context, widgetId: Int) {
         DrawingStore.delete(context, widgetId)
         SavingsStore.deleteBackground(context, SavingsConfig.fromJson(sp(context).getString("${widgetId}_savings", null)).bgFile)
+        ShortcutsConfig.fromJson(sp(context).getString("${widgetId}_shortcuts", null)).items.forEach { ShortcutFiles.delete(context, it.icon) }
         sp(context).edit()
+            .remove("${widgetId}_shortcuts")
             .remove("${widgetId}_palette")
             .remove("${widgetId}_roundness")
             .remove("${widgetId}_device")

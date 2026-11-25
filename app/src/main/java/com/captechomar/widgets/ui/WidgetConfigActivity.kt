@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.captechomar.widgets.widgets.BatteryKind
 import com.captechomar.widgets.widgets.DrawingKind
 import com.captechomar.widgets.widgets.SavingsKind
+import com.captechomar.widgets.widgets.ShortcutsKind
 import com.captechomar.widgets.widgets.WeatherKind
 import com.captechomar.widgets.widgets.WidgetKinds
 import com.captechomar.widgets.widgets.WidgetUpdater
@@ -54,6 +55,7 @@ class WidgetConfigActivity : ComponentActivity() {
                         }
                         if (kind === SavingsKind) SavingsConfigPanel(widgetId, kind, "Done", onSaved)
                         else if (kind === DrawingKind) DrawingConfigPanel(widgetId, kind, "Done", onSaved)
+                        else if (kind === ShortcutsKind) ShortcutsConfigPanel(widgetId, kind, "Done", onSaved)
                         else if (kind === WeatherKind) WeatherConfigPanel(widgetId, kind, "Done", onSaved)
                         else ConfigPanel(widgetId = widgetId, kind = kind, saveLabel = "Done", onSaved = onSaved)
                     }

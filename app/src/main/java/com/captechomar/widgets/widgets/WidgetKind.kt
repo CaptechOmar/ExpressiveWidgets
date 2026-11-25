@@ -140,7 +140,7 @@ object MusicKind : WidgetKind {
 }
 
 object WidgetKinds {
-    val all: List<WidgetKind> = listOf(BatteryKind, MusicKind, SavingsKind, WeatherKind, DrawingKind)
+    val all: List<WidgetKind> = listOf(BatteryKind, MusicKind, SavingsKind, WeatherKind, DrawingKind, ShortcutsKind)
 
     fun byProvider(className: String?): WidgetKind? = all.firstOrNull { it.providerClass.name == className }
 }
@@ -306,4 +306,45 @@ internal fun openable(context: Context, intent: Intent): Intent {
         Intent(action).setPackage(pkg).takeIf(::startable)?.let { return it }
     }
     return pm.getLaunchIntentForPackage(pkg) ?: intent
+}
+
+object ShortcutsKind : WidgetKind {
+    override val providerClass: Class<*> = ShortcutsWidgetProvider::class.java
+    override val iconRes = R.drawable.kind_shortcuts
+    override val title = "Shortcuts"
+    override val description = "A row of icons that open an app, a shortcut or a screen."
+    override val layoutRes = R.layout.widget_shortcuts
+    override val defaultConfig = WidgetConfig(roundness = 1f)
+
+    override fun render(context: Context, cfg: WidgetConfig, widthPx: Int, heightPx: Int): Bitmap =
+        ShortcutsRenderer.render(context, cfg, widthPx, heightPx)
+
+    override fun bindClicks(
+        context: Context, views: RemoteViews, widgetId: Int, cfg: WidgetConfig, widthDp: Float, heightDp: Float,
+    ) {
+        val ids = intArrayOf(R.id.block0, R.id.block1, R.id.block2, R.id.block3, R.id.block4, R.id.block5)
+        val pad = (ShortcutsRenderer.PAD * heightDp * context.resources.displayMetrics.density).toInt()
+        views.setViewPadding(R.id.blocks, pad, pad, pad, pad)
+        ids.forEachIndexed { i, id ->
+            val item = cfg.shortcuts.items.getOrNull(i)
+            if (item == null) {
+                views.setViewVisibility(id, View.GONE)
+                return@forEachIndexed
+            }
+            views.setViewVisibility(id, View.VISIBLE)
+            if (item.action.type == TapAction.Type.NONE) {
+                views.setOnClickPendingIntent(id, null)
+                return@forEachIndexed
+            }
+            // a screenless page shrinks the tile's corners, then opens what was picked
+            val tap = Intent(context, com.captechomar.widgets.ui.ShortcutTapActivity::class.java)
+                .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
+                .putExtra("index", i)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            views.setOnClickPendingIntent(
+                id,
+                PendingIntent.getActivity(context, widgetId * 10 + i, tap, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT),
+            )
+        }
+    }
 }
