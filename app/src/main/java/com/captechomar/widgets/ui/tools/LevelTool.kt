@@ -194,7 +194,7 @@ fun LevelTool() {
     val context = LocalContext.current
     val view = LocalView.current
     val (available, accel) = rememberSensor(Sensor.TYPE_ACCELEROMETER)
-    if (!available) return Missing("motion")
+    if (!available) return Missing("motion", R.drawable.tool_level)
     val scheme = MaterialTheme.colorScheme
     val prefs = remember { context.applicationContext.getSharedPreferences("tools", Context.MODE_PRIVATE) }
     val vibrator = remember { levelVibrator(context) }

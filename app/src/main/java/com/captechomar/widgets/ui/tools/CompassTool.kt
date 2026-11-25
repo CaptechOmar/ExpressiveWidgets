@@ -208,7 +208,7 @@ private const val DIAL_FRACTION = 0.845f
 fun CompassTool() {
     val context = LocalContext.current
     val (available, rotation) = rememberSensor(Sensor.TYPE_ROTATION_VECTOR)
-    if (!available) return Missing("compass")
+    if (!available) return Missing("compass", R.drawable.tool_compass)
     val (_, accel) = rememberSensor(Sensor.TYPE_ACCELEROMETER)
     val (_, baro) = rememberSensor(Sensor.TYPE_PRESSURE)
     val settings = remember { CompassSettings(context.applicationContext.getSharedPreferences("tools", Context.MODE_PRIVATE)) }

@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
+import com.captechomar.widgets.R
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -68,8 +72,15 @@ internal fun rememberSensor(type: Int): Pair<Boolean, State<FloatArray?>> {
 }
 
 @Composable
-internal fun Missing(what: String) {
-    Text("This phone has no $what sensor.", style = MaterialTheme.typography.bodyLarge, color = hint)
+internal fun Missing(what: String, iconRes: Int) {
+    androidx.compose.foundation.layout.Column(
+        Modifier.fillMaxWidth().heightIn(min = 460.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        androidx.compose.material3.Icon(painterResource(iconRes), null, Modifier.size(72.dp), tint = hint)
+        Text("This phone has no $what sensor.", style = MaterialTheme.typography.bodyLarge, color = hint, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    }
 }
 
 // ---------------------------------------------------------------- barometer
@@ -77,7 +88,7 @@ internal fun Missing(what: String) {
 @Composable
 fun BarometerTool() {
     val (available, pressure) = rememberSensor(Sensor.TYPE_PRESSURE)
-    if (!available) return Missing("air pressure")
+    if (!available) return Missing("air pressure", R.drawable.tool_barometer)
     val hpa = pressure.value?.get(0)
     if (hpa == null) {
         Text("Waiting for the sensor…", style = MaterialTheme.typography.bodyLarge, color = hint)

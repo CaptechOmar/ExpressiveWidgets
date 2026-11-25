@@ -214,7 +214,7 @@ private fun ToolsPages(
 
     if (open != null && open.tool.fill) {
         Column(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            PageHeader(if (open.tool.id == "level" && LevelFlip.on) "Flip to Align" else open.tool.title, onBack = { setTool(null) }) {
+            PageHeader(if (open.tool.id == "level" && LevelFlip.on) "Flip to Align" else open.tool.title, onBack = { setTool(null) }, iconRes = open.tool.iconRes) {
                 FavoriteButton(open.key in favorites.keys) { favorites.toggle(open.key) }
             }
             Box(Modifier.weight(1f).fillMaxWidth()) { open.tool.content() }
@@ -259,7 +259,7 @@ private fun ToolsPages(
                 }
             }
             else -> {
-                PageHeader(if (open.tool.id == "level" && LevelFlip.on) "Flip to Align" else open.tool.title, onBack = { setTool(null) }) {
+                PageHeader(if (open.tool.id == "level" && LevelFlip.on) "Flip to Align" else open.tool.title, onBack = { setTool(null) }, iconRes = open.tool.iconRes) {
                     FavoriteButton(open.key in favorites.keys) { favorites.toggle(open.key) }
                 }
                 open.tool.content()
@@ -280,9 +280,10 @@ private fun FavoriteButton(favorite: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PageHeader(title: String, onBack: () -> Unit, trailing: @Composable () -> Unit = {}) {
+private fun PageHeader(title: String, onBack: () -> Unit, iconRes: Int? = null, trailing: @Composable () -> Unit = {}) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onBack) { Icon(painterResource(R.drawable.tool_back), contentDescription = "Back") }
+        if (iconRes != null) Icon(painterResource(iconRes), null, Modifier.padding(start = 2.dp).size(28.dp), tint = MaterialTheme.colorScheme.primary)
         Text(title, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(start = 4.dp).weight(1f))
         trailing()
     }
