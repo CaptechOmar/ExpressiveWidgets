@@ -75,6 +75,13 @@ object ShortcutsRenderer {
 
     
 
+    /** The rounded squares borrow the weather card's clock tile only on the wallpaper palette; the others use their track colour. */
+    fun tileColor(col: WidgetColors, i: Int, palette: String) =
+        if (i == 0) col.accent else if (palette == "dynamic") col.tile else col.track
+
+    fun iconColor(col: WidgetColors, i: Int, palette: String) =
+        if (i == 0) col.onAccent else if (palette == "dynamic") col.onTile else col.content
+
     private fun drawIcon(context: Context, canvas: Canvas, id: String, tint: Boolean, ink: Int, tile: RectF) {
         val size = min(tile.width(), tile.height()) * 0.494f
         val box = RectF(tile.centerX() - size / 2, tile.centerY() - size / 2, tile.centerX() + size / 2, tile.centerY() + size / 2)
