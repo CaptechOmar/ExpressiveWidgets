@@ -2,6 +2,7 @@ package com.captechomar.widgets.ui.tools
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,13 +42,26 @@ fun String.toNum(): Double? = replace(',', '.').toDoubleOrNull()
 
 /** Two or more choices in a row, like metric / imperial. */
 @Composable
-fun Choice(options: List<String>, selected: Int, modifier: Modifier = Modifier.fillMaxWidth(), onSelect: (Int) -> Unit) {
+fun Choice(
+    options: List<String>, selected: Int, modifier: Modifier = Modifier.fillMaxWidth(),
+    /** Optional icon per option: the one shown normally and the one shown when it is selected. */
+    icons: List<Pair<Int, Int>>? = null,
+    onSelect: (Int) -> Unit,
+) {
     SingleChoiceSegmentedButtonRow(modifier) {
         options.forEachIndexed { i, text ->
             SegmentedButton(
                 selected = i == selected,
                 onClick = { onSelect(i) },
                 shape = SegmentedButtonDefaults.itemShape(i, options.size),
+                icon = {
+                    val pair = icons?.getOrNull(i)
+                    if (pair == null) SegmentedButtonDefaults.Icon(i == selected)
+                    else androidx.compose.material3.Icon(
+                        androidx.compose.ui.res.painterResource(if (i == selected) pair.second else pair.first), null,
+                        Modifier.size(SegmentedButtonDefaults.IconSize),
+                    )
+                },
             ) { Text(text) }
         }
     }

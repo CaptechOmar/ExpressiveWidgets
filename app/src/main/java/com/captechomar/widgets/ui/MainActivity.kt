@@ -95,12 +95,15 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Surface(shape = RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.surfaceContainer, shadowElevation = 8.dp) {
                                 Row(Modifier.padding(10.dp)) {
-                                    Choice(listOf("Widgets", "Tools"), tab, Modifier.width(220.dp)) { tab = it }
+                                    Choice(
+                                        listOf("Widgets", "Tools"), tab, Modifier.width(260.dp),
+                                        icons = listOf(R.drawable.tab_widgets to R.drawable.tab_widgets_fill, R.drawable.tab_tools to R.drawable.tab_tools_fill),
+                                    ) { tab = it }
                                 }
                             }
                             Surface(
-                                shape = RoundedCornerShape(32.dp), color = MaterialTheme.colorScheme.primaryContainer, shadowElevation = 8.dp,
-                                modifier = Modifier.size(width = 60.dp, height = 60.dp).clip(RoundedCornerShape(32.dp)).clickable { searching = true },
+                                shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.primaryContainer, shadowElevation = 8.dp,
+                                modifier = Modifier.size(width = 60.dp, height = 60.dp).clip(RoundedCornerShape(22.dp)).clickable { searching = true },
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(painterResource(R.drawable.sci_lucide_search), contentDescription = "Search tools", tint = MaterialTheme.colorScheme.onPrimaryContainer)
