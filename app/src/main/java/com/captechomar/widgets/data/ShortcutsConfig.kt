@@ -30,7 +30,7 @@ data class ShortcutsConfig(val items: List<ShortcutItem> = default()) {
         const val MAX = 6
 
         fun default() = listOf(
-            "solar:bolt-bold", "tabler:square-rounded-check", "cib:stadia", "lucide:circle-dollar-sign", "tabler:device-remote",
+            "solar:bolt-bold", "tabler:square-rounded-check", "cib:stadia", "lucide:circle-dollar-sign", "solar:remote-controller-linear",
         ).map { ShortcutItem(it) }
 
         fun fromJson(s: String?): ShortcutsConfig {
@@ -40,7 +40,7 @@ data class ShortcutsConfig(val items: List<ShortcutItem> = default()) {
                 ShortcutsConfig((0 until arr.length()).map {
                     val o = arr.getJSONObject(it)
                     ShortcutItem(
-                        o.getString("icon"), o.optBoolean("tint", true),
+                        o.getString("icon").let { id -> if (id == "tabler:device-remote") "solar:remote-controller-linear" else id }, o.optBoolean("tint", true),
                         o.optJSONObject("action")?.let(TapAction::fromJson) ?: TapAction(),
                     )
                 }.take(MAX))

@@ -11,7 +11,7 @@ object ShortcutIcons {
         ShortcutIcon("tabler:square-rounded-check", "Rounded check", R.drawable.sci_tabler_square_rounded_check),
         ShortcutIcon("cib:stadia", "Stadia", R.drawable.sci_cib_stadia),
         ShortcutIcon("lucide:circle-dollar-sign", "Dollar", R.drawable.sci_lucide_circle_dollar_sign),
-        ShortcutIcon("tabler:device-remote", "Remote", R.drawable.sci_tabler_device_remote),
+        ShortcutIcon("solar:remote-controller-linear", "Remote", R.drawable.sci_solar_remote_controller_linear),
         ShortcutIcon("lucide:house", "House", R.drawable.sci_lucide_house),
         ShortcutIcon("lucide:phone", "Phone", R.drawable.sci_lucide_phone),
         ShortcutIcon("lucide:camera", "Camera", R.drawable.sci_lucide_camera),
