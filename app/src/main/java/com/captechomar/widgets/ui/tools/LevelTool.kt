@@ -71,7 +71,9 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -118,7 +120,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 
 // Geometry is in fractions of the card width so the same numbers drive the drawing and the haptics.
-private const val OUTLINE = 0.43f // width of the outline shape
+private const val OUTLINE = 0.405f // width of the outline shape
 private const val FILL = 0.82f // the floating shape, relative to the outline, when level
 private const val DRIFT = 0.0048f // how far the shape drifts per degree of tilt
 private const val LEVEL_IN = 1.0f // degrees at which it counts as level
@@ -199,6 +201,7 @@ fun LevelTool() {
 
     var haptic by remember { mutableStateOf(prefs.getBoolean("level_haptic", true)) }
     var flipMode by remember { mutableStateOf(prefs.getBoolean("level_flip", false)) }
+    var volumeShown by remember { mutableStateOf(true) }
     var volume by remember { mutableFloatStateOf(prefs.getFloat("level_volume", 0.8f)) }
     var torch by remember { mutableStateOf(prefs.getBoolean("level_torch", false)) }
     SideEffect { LevelFlip.on = flipMode }
@@ -441,7 +444,17 @@ fun LevelTool() {
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // the card runs from just under the header down to the option bar, which sits alone below it
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(36.dp))) {
+        BoxWithConstraints(
+            Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(36.dp)).pointerInput(Unit) {
+                var drag = 0f
+                detectVerticalDragGestures(
+                    onDragStart = { drag = 0f },
+                    onDragEnd = {
+                        if (drag > 50f) volumeShown = false else if (drag < -50f) volumeShown = true
+                    },
+                ) { _, amount -> drag += amount }
+            },
+        ) {
             // standing up with the screen turned a quarter away from the world (rotation locked, phone on its side) the
             // text and the shape are laid out for the sideways card and turned back so they read the right way up
             val sideways = upright && abs(edgeTurns) == 1
@@ -583,26 +596,36 @@ fun LevelTool() {
                     value, label, big, small, flatLabel, labelFirst = false, valueColor = flatValue,
                 )
             }
-            }
-        }
 
-        // the beep volume, only while flip to align is on
-        if (flipMode) Row(
-            Modifier.align(Alignment.CenterHorizontally).fillMaxWidth().padding(horizontal = 12.dp).clip(RoundedCornerShape(50)).background(barBg)
-                .padding(horizontal = 18.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Icon(painterResource(R.drawable.lv_speaker), contentDescription = "Beep volume", tint = barFg, modifier = Modifier.size(24.dp))
-            Slider(
-                value = volume,
-                onValueChange = { volume = it },
-                onValueChangeFinished = {
-                    prefs.edit().putFloat("level_volume", volume).apply()
-                    sounds.play(soundIds[1], volume, volume, 1, 0, 1f)
-                },
-                thumb = { Box(Modifier.size(width = 5.dp, height = 34.dp).clip(CircleShape).background(barFg)) },
-            )
+            // the beep volume floats over the card while flip to align is on; swipe the card down to hide it and up to bring it back
+            val volF by animateFloatAsState(if (flipMode && volumeShown) 1f else 0f, tween(280), label = "volF")
+            if (volF > 0.01f) Row(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .fillMaxWidth()
+                    .graphicsLayer {
+                        translationY = (1f - volF) * (size.height + 24.dp.toPx())
+                        alpha = volF
+                    }
+                    .clip(RoundedCornerShape(36.dp))
+                    .background(barBg)
+                    .padding(horizontal = 22.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Icon(painterResource(R.drawable.lv_speaker), contentDescription = "Beep volume", tint = barFg, modifier = Modifier.size(26.dp))
+                Slider(
+                    value = volume,
+                    onValueChange = { volume = it },
+                    onValueChangeFinished = {
+                        prefs.edit().putFloat("level_volume", volume).apply()
+                        sounds.play(soundIds[1], volume, volume, 1, 0, 1f)
+                    },
+                    thumb = { Box(Modifier.size(width = 5.dp, height = 34.dp).clip(CircleShape).background(barFg)) },
+                )
+            }
+            }
         }
 
         // the option bar and the flip-to-align button
@@ -1169,45 +1192,53 @@ private fun lerpInt(a: Int, b: Int, t: Float): Int {
 
 private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
 
+// One loop is 6.85 s and starts with the phone being picked up (the bubbles shrink as it lifts and flips back to face up).
+private const val FLIP_LOOP = 6850f
+private const val FLIP_LEAD = 650f
+
 /**
- * The flip-to-align explainer, following the reference recording (one 7 s loop): the phone shows its level screen, flips
- * over, tips flat with the flashlight lighting up, the sound and vibration bubbles pop out, then it is lifted and flipped back.
+ * The flip-to-align explainer, timed from the reference recording (one 7 s loop): the phone shows its level screen, flips
+ * over (0.3 s), tips flat, the flashlight comes on, the sound and vibration bubbles pop out and shake, then the phone is
+ * lifted, rolled and flipped back.
  */
 @Composable
 private fun FlipAnimation() {
     val scheme = MaterialTheme.colorScheme
     val loop = rememberInfiniteTransition(label = "flip")
-    val t by loop.animateFloat(0f, 7000f, infiniteRepeatable(tween(7000, easing = LinearEasing)), label = "t")
+    val ms by loop.animateFloat(0f, 7000f, infiniteRepeatable(tween(7000, easing = LinearEasing)), label = "t")
     val wave by loop.animateFloat(0f, 1f, infiniteRepeatable(tween(3200, easing = LinearEasing)), label = "flipwave")
+    val s = ms / 1000f
 
-    val flipIn = calSeg(t, 370f, 640f)
-    val flipOut = calSeg(t, 5300f, 5700f)
-    val settleIn = calLin(t, 640f, 1000f)
-    val yawRipple = if (t < 1500f) 0.09f * sin(PI.toFloat() * settleIn) * (1f - settleIn) else 0f
-    val phi = PI.toFloat() * (flipIn + flipOut) + yawRipple
-    val tilt = (calSeg(t, 1400f, 2050f) - calSeg(t, 5250f, 5650f)).coerceIn(0f, 1f)
-    val roll = -18f * sin(PI.toFloat() * calLin(t, 5250f, 5700f))
-    val flash = (calSeg(t, 2150f, 2300f) - calSeg(t, 5200f, 5300f)).coerceIn(0f, 1f)
-    val label = if (t < 3000f) signed(-0.5f * flipIn) else signed(-0.5f * (1f - calSeg(t, 5700f, 5900f)))
-    val popA = backOut(calLin(t, 2330f, 2560f), 1.5f) * (1f - calSeg(t, 5200f, 5350f))
-    val popB = backOut(calLin(t, 2370f, 2600f), 1.5f) * (1f - calSeg(t, 5210f, 5360f))
+    val yawIn = calSeg(s, 1.32f, 1.62f)
+    val yawOut = calSeg(s, 6.37f, 6.67f)
+    val tiltIn = 1f - (1f - calLin(s, 2.52f, 3.2f)).pow(3)
+    val tiltOutF = calSeg(s, 6.27f, 6.62f)
+    val tilt = (tiltIn * (1f - tiltOutF)).coerceIn(0f, 1f)
+    val roll = 24f * calSeg(s, 6.27f, 6.55f) * (1f - calSeg(s, 6.6f, 6.95f))
+    val flash = (calLin(s, 3.22f, 3.27f) - calLin(s, 6.2f, 6.24f)).coerceIn(0f, 1f)
+    val label = if (s < 4f) signed(-0.5f * yawIn) else signed(-0.5f * (1f - calSeg(s, 6.67f, 6.9f)))
+    val popA = backOut(calLin(s, 3.42f, 3.70f), 1.6f) * (1f - calLin(s, 6.25f, 6.33f))
+    val popB = backOut(calLin(s, 3.45f, 3.73f), 1.6f) * (1f - calLin(s, 6.26f, 6.34f))
+    val shake = if (s in 3.7f..6.25f) 1f else 0f
     val mint = scheme.primaryContainer
 
     Box(Modifier.fillMaxWidth().aspectRatio(1.2f).clip(RoundedCornerShape(28.dp)).background(scheme.surfaceContainer)) {
         Canvas(Modifier.fillMaxSize()) {
             val pw = size.width
             val ph = size.height
-            val h = ph * 0.92f
+            val h = ph * 0.93f
             val w = h * 0.5f
-            val thick = w * 0.11f
-            val dist = h * 4.2f
-            val alpha = Math.toRadians(70.0 * tilt).toFloat()
+            val thick = w * 0.082f
+            val lift = w * 0.03f
+            val dist = h * 5.3f
+            val alpha = Math.toRadians(66.0 * tilt).toFloat()
             val sa = sin(alpha)
             val ca = cos(alpha)
+            val phi = PI.toFloat() * (yawIn + yawOut)
             val sp = sin(phi)
             val cp = cos(phi)
             val cx = pw / 2f
-            val cy = lerp(ph * 0.5f, ph * 0.625f, tilt)
+            val cy = lerp(ph * 0.5f, ph * 0.615f, tilt)
 
             fun project(out: FloatArray, i: Int, x: Float, y: Float, z: Float) {
                 val x1 = x * cp + z * sp
@@ -1220,81 +1251,174 @@ private fun FlipAnimation() {
             }
             val xs = floatArrayOf(-w / 2f, w / 2f, w / 2f, -w / 2f)
             val ys = floatArrayOf(-h / 2f, -h / 2f, h / 2f, h / 2f)
-            val front = FloatArray(8)
-            val back = FloatArray(8)
-            for (i in 0..3) {
-                project(front, i, xs[i], ys[i], thick / 2f)
-                project(back, i, xs[i], ys[i], -thick / 2f)
+            fun planeAt(z: Float): FloatArray {
+                val out = FloatArray(8)
+                for (i in 0..3) project(out, i, xs[i], ys[i], z)
+                return out
             }
+            val front = planeAt(thick / 2f)
+            val back = planeAt(-thick / 2f)
             val frontShown = cp >= 0f
             val near = if (frontShown) front else back
             val far = if (frontShown) back else front
+            val srcFront = floatArrayOf(0f, 0f, w, 0f, w, h, 0f, h)
+            val srcBack = floatArrayOf(w, 0f, 0f, 0f, 0f, h, w, h) // the back is drawn as seen from behind, camera bar top left
+            val rail = intArrayOf(0xFF8F96AD.toInt(), 0xFFB9BFD2.toInt(), 0xFFDDE1EC.toInt(), 0xFFAEB4C8.toInt(), 0xFF8A91A8.toInt())
 
             drawIntoCanvas { canvas ->
                 val n = canvas.nativeCanvas
                 val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+                val m = android.graphics.Matrix()
                 n.save()
                 n.rotate(roll, cx, cy)
 
                 if (tilt > 0.02f) {
                     n.save()
-                    n.translate(cx, cy + h * 0.5f * ca + h * 0.02f)
+                    n.translate(cx, cy + h * 0.5f * ca * 0.9f + h * 0.03f)
                     n.scale(1f, 0.1f)
-                    p.shader = RadialGradient(0f, 0f, w * 0.62f, intArrayOf(withAlpha(0xFF000000.toInt(), (120 * tilt).roundToInt()), 0), null, Shader.TileMode.CLAMP)
+                    p.shader = RadialGradient(0f, 0f, w * 0.62f, intArrayOf(withAlpha(0xFF000000.toInt(), (110 * tilt).roundToInt()), 0), null, Shader.TileMode.CLAMP)
                     n.drawCircle(0f, 0f, w * 0.62f, p)
                     p.shader = null
                     n.restore()
                 }
 
+                fun withPlane(plane: FloatArray, srcPts: FloatArray, block: () -> Unit) {
+                    m.setPolyToPoly(srcPts, 0, plane, 0, 4)
+                    n.save()
+                    n.concat(m)
+                    block()
+                    n.restore()
+                }
+
+                // the camera module stands proud of the back: layers from the back surface up to its top face
+                val modPath = android.graphics.Path().apply { addRoundRect(RectF(w * 0.043f, h * 0.072f, w * 0.957f, h * 0.246f), h * 0.087f, h * 0.087f, android.graphics.Path.Direction.CW) }
+                val baseZ = -thick / 2f
+                val topPlane = planeAt(baseZ - lift)
+                fun drawModule() {
+                    // a soft shadow on the back under it, then the silver sides, then the top
+                    for (k in 3 downTo 1) {
+                        withPlane(back, srcBack) {
+                            p.color = withAlpha(0xFF000000.toInt(), 20)
+                            n.save()
+                            n.translate(0f, h * 0.012f * k)
+                            n.drawPath(modPath, p)
+                            n.restore()
+                        }
+                    }
+                    val steps = 6
+                    val tmp = FloatArray(8)
+                    p.color = 0xFF8C93AA.toInt()
+                    for (j in 0..steps) {
+                        val f = j / steps.toFloat()
+                        for (q in 0..7) tmp[q] = back[q] + (topPlane[q] - back[q]) * f
+                        withPlane(tmp, srcBack) { n.drawPath(modPath, p) }
+                    }
+                    withPlane(topPlane, srcBack) {
+                        p.shader = LinearGradient(0f, 0f, w, 0f, intArrayOf(0xFFA9AFC4.toInt(), 0xFFC6CCDD.toInt(), 0xFFB6BCD0.toInt()), null, Shader.TileMode.CLAMP)
+                        n.drawPath(modPath, p)
+                        p.shader = null
+                        p.color = 0xFF161616.toInt()
+                        n.drawRoundRect(RectF(w * 0.06f, h * 0.082f, w * 0.693f, h * 0.236f), h * 0.077f, h * 0.077f, p)
+                        val ly = h * 0.159f
+                        // the three lenses: a small blue one, a big black one with a highlight, and a squared one
+                        p.color = 0xFF050507.toInt()
+                        n.drawCircle(w * 0.19f, ly, w * 0.054f, p)
+                        p.color = 0xFF1B2A78.toInt()
+                        n.drawCircle(w * 0.178f, ly - w * 0.012f, w * 0.03f, p)
+                        p.color = 0xFF050507.toInt()
+                        n.drawCircle(w * 0.375f, ly, w * 0.084f, p)
+                        p.shader = RadialGradient(w * 0.36f, ly - w * 0.03f, w * 0.05f, intArrayOf(0xFF6A6A6E.toInt(), 0), null, Shader.TileMode.CLAMP)
+                        n.drawCircle(w * 0.375f, ly, w * 0.084f, p)
+                        p.shader = null
+                        p.color = 0xFF08090C.toInt()
+                        n.drawRoundRect(RectF(w * 0.505f, ly - h * 0.039f, w * 0.614f, ly + h * 0.039f), w * 0.02f, w * 0.02f, p)
+                        p.color = 0xFF1E2C80.toInt()
+                        n.drawRoundRect(RectF(w * 0.512f, ly - h * 0.034f, w * 0.56f, ly - h * 0.005f), w * 0.015f, w * 0.015f, p)
+                        // the two dots at the end of the bar; the upper one is the flashlight
+                        val fx = w * 0.815f
+                        val fy = h * 0.125f
+                        if (flash > 0.01f) {
+                            p.shader = RadialGradient(fx, fy, w * 0.3f, intArrayOf(withAlpha(0xFFFFEC70.toInt(), (200 * flash).roundToInt()), 0), null, Shader.TileMode.CLAMP)
+                            n.drawCircle(fx, fy, w * 0.3f, p)
+                            p.shader = null
+                        }
+                        p.color = lerpInt(0xFF4A4A4C.toInt(), 0xFFFFF08C.toInt(), flash)
+                        n.drawCircle(fx, fy, w * 0.054f, p)
+                        p.color = 0xFF4A4A4C.toInt()
+                        n.drawCircle(fx, h * 0.188f, w * 0.054f, p)
+                    }
+                }
+
+                // the volume rocker and power key stick out of one side edge
+                fun drawButtons() {
+                    p.color = 0xFF9CA3B8.toInt()
+                    for ((a, b) in listOf(0.272f to 0.337f, 0.385f to 0.537f)) {
+                        val bp = FloatArray(8)
+                        project(bp, 0, w / 2f + w * 0.016f, -h / 2f + h * a, thick * 0.28f)
+                        project(bp, 1, w / 2f + w * 0.016f, -h / 2f + h * a, -thick * 0.28f)
+                        project(bp, 2, w / 2f + w * 0.016f, -h / 2f + h * b, -thick * 0.28f)
+                        project(bp, 3, w / 2f + w * 0.016f, -h / 2f + h * b, thick * 0.28f)
+                        val path = android.graphics.Path()
+                        path.moveTo(bp[0], bp[1]); path.lineTo(bp[2], bp[3]); path.lineTo(bp[4], bp[5]); path.lineTo(bp[6], bp[7]); path.close()
+                        n.drawPath(path, p)
+                    }
+                }
+                val edgeFacing = -sp * ca > 0f
+
+                if (frontShown) drawModule()
+                if (!edgeFacing) drawButtons()
+
                 // the body: the outline extruded from the far face to the near one
-                val src = floatArrayOf(0f, 0f, w, 0f, w, h, 0f, h)
-                val outline = android.graphics.Path().apply { addRoundRect(RectF(0f, 0f, w, h), w * 0.14f, w * 0.14f, android.graphics.Path.Direction.CW) }
+                val outline = android.graphics.Path().apply { addRoundRect(RectF(0f, 0f, w, h), w * 0.17f, w * 0.17f, android.graphics.Path.Direction.CW) }
                 val minX = min(min(near[0], near[2]), min(near[4], near[6]))
                 val maxX = max(max(far[0], far[2]), max(far[4], far[6])).coerceAtLeast(minX + 1f)
-                p.shader = LinearGradient(
-                    minX, 0f, maxX, 0f,
-                    intArrayOf(0xFF9097AD.toInt(), 0xFFC4C9D8.toInt(), 0xFFD9DDE8.toInt(), 0xFFB1B7CA.toInt(), 0xFF8F95AB.toInt()),
-                    floatArrayOf(0f, 0.25f, 0.4f, 0.75f, 1f), Shader.TileMode.CLAMP,
-                )
-                val layers = 16
-                val m = android.graphics.Matrix()
+                p.shader = LinearGradient(minX, 0f, maxX, 0f, rail, floatArrayOf(0f, 0.25f, 0.4f, 0.75f, 1f), Shader.TileMode.CLAMP)
+                val layers = 18
                 val dst = FloatArray(8)
                 for (j in 0..layers) {
                     val f = j / layers.toFloat()
                     for (q in 0..7) dst[q] = far[q] + (near[q] - far[q]) * f
-                    m.setPolyToPoly(src, 0, dst, 0, 4)
-                    n.save()
-                    n.concat(m)
-                    n.drawPath(outline, p)
-                    n.restore()
+                    withPlane(dst, srcFront) { n.drawPath(outline, p) }
                 }
                 p.shader = null
+                if (edgeFacing) drawButtons()
 
-                // the face that is turned towards us; the back is drawn mirrored so its camera bar sits top left
-                val faceSrc = if (frontShown) src else floatArrayOf(w, 0f, 0f, 0f, 0f, h, w, h)
-                m.setPolyToPoly(faceSrc, 0, near, 0, 4)
-                n.concat(m)
-                if (frontShown) drawFlipFront(n, w, h, label, wave, mint.toArgb(), lerp(mint, Color.White, 0.72f).toArgb())
-                else drawFlipBack(n, w, h, flash)
+                // the face turned towards us
+                withPlane(near, if (frontShown) srcFront else srcBack) {
+                    if (frontShown) drawFlipFront(n, w, h, label, wave, mint.toArgb(), lerp(mint, Color.White, 0.72f).toArgb())
+                    else drawFlipBack(n, w, h)
+                }
+                if (!frontShown) drawModule()
                 n.restore()
             }
         }
 
         BoxWithConstraints(Modifier.fillMaxSize()) {
-            val d = maxWidth * 0.14f
-            for ((icon, yf, pop) in listOf(Triple(R.drawable.lv_speaker, 0.39f, popA), Triple(R.drawable.lv_vibrate, 0.615f, popB))) {
+            val d = maxWidth * 0.143f
+            val sec = s
+            val shX = shake * maxWidth * 0.006f * sin(2f * PI.toFloat() * 11f * sec)
+            val shY = shake * maxWidth * 0.002f * sin(2f * PI.toFloat() * 17f * sec + 1f)
+            val shR = shake * 9f * sin(2f * PI.toFloat() * 11f * sec + 0.8f)
+            for ((idx, cfg) in listOf(Triple(R.drawable.lv_speaker_fill, 0.386f, popA), Triple(R.drawable.lv_vibrate, 0.614f, popB)).withIndex()) {
+                val (icon, yf, pop) = cfg
                 Box(
                     Modifier
-                        .offset(maxWidth * 0.855f - d / 2, maxHeight * yf - d / 2)
+                        .offset(maxWidth * 0.857f - d / 2 + (shX * (if (idx == 0) 1f else -1f)), maxHeight * yf - d / 2 + shY)
                         .size(d)
                         .graphicsLayer {
                             scaleX = pop
                             scaleY = pop
                             alpha = (pop * 2f).coerceIn(0f, 1f)
                         }
+                        .shadow(5.dp, CircleShape)
                         .background(mint, CircleShape),
                     contentAlignment = Alignment.Center,
-                ) { Icon(painterResource(icon), null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(d * 0.55f)) }
+                ) {
+                    Icon(
+                        painterResource(icon), null, tint = scheme.onPrimaryContainer,
+                        modifier = Modifier.size(d * 0.5f).graphicsLayer { rotationZ = if (idx == 1) shR else 0f },
+                    )
+                }
             }
         }
     }
@@ -1302,12 +1426,16 @@ private fun FlipAnimation() {
 
 private fun drawFlipFront(n: android.graphics.Canvas, w: Float, h: Float, label: String, wave: Float, mint: Int, bubble: Int) {
     val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-    val r = w * 0.14f
-    p.color = 0xFFB9BFD2.toInt()
+    val r = w * 0.17f
+    p.shader = LinearGradient(0f, 0f, w, 0f, intArrayOf(0xFF8F96AD.toInt(), 0xFFC9CEDD.toInt(), 0xFF9AA1B7.toInt()), null, Shader.TileMode.CLAMP)
     n.drawRoundRect(RectF(0f, 0f, w, h), r, r, p)
-    val inset = w * 0.028f
+    p.shader = null
+    val rim = w * 0.016f
+    p.color = 0xFF151515.toInt()
+    n.drawRoundRect(RectF(rim, rim, w - rim, h - rim), r - rim, r - rim, p)
+    val inset = w * 0.049f
     val screen = RectF(inset, inset, w - inset, h - inset)
-    p.color = 0xFF020F0C.toInt()
+    p.color = 0xFF020D0B.toInt()
     n.drawRoundRect(screen, r - inset, r - inset, p)
     n.save()
     n.clipPath(android.graphics.Path().apply { addRoundRect(screen, r - inset, r - inset, android.graphics.Path.Direction.CW) })
@@ -1323,52 +1451,38 @@ private fun drawFlipFront(n: android.graphics.Canvas, w: Float, h: Float, label:
         path.close()
         return path
     }
-    p.color = lerpInt(mint, 0xFF000000.toInt(), 0.45f)
-    n.drawPath(wavePath(h * 0.44f, h * 0.014f, -wave + 0.35f), p)
+    p.color = 0xFF0A7060.toInt()
+    n.drawPath(wavePath(h * 0.404f, h * 0.014f, -wave + 0.3f), p)
     p.color = mint
-    n.drawPath(wavePath(h * 0.455f, h * 0.012f, wave), p)
+    n.drawPath(wavePath(h * 0.405f, h * 0.015f, wave), p)
     val text = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFD9FFF3.toInt()
-        textSize = w * 0.19f
+        color = 0xFFC6FFF0.toInt()
+        textSize = w * 0.163f
         textAlign = android.graphics.Paint.Align.CENTER
         typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
-    n.drawText(label, w / 2f, h * 0.105f, text)
+    n.drawText(label, w / 2f, h * 0.23f, text)
     p.color = bubble
-    val half = w * 0.16f
-    n.drawRoundRect(RectF(w / 2f - half, h * 0.6f - half, w / 2f + half, h * 0.6f + half), w * 0.08f, w * 0.08f, p)
+    val half = w * 0.153f
+    n.drawRoundRect(RectF(w / 2f - half, h * 0.576f - half, w / 2f + half, h * 0.576f + half), w * 0.1f, w * 0.1f, p)
     p.color = 0xFF000000.toInt()
-    n.drawCircle(w / 2f, h * 0.03f, w * 0.02f, p)
+    n.drawCircle(w / 2f, h * 0.06f, w * 0.03f, p)
     n.restore()
 }
 
-private fun drawFlipBack(n: android.graphics.Canvas, w: Float, h: Float, flash: Float) {
+private fun drawFlipBack(n: android.graphics.Canvas, w: Float, h: Float) {
     val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-    val r = w * 0.14f
-    p.shader = LinearGradient(0f, 0f, w * 0.3f, h, intArrayOf(0xFF6A6F83.toInt(), 0xFF868CA1.toInt()), null, Shader.TileMode.CLAMP)
+    val r = w * 0.17f
+    p.shader = LinearGradient(
+        0f, 0f, w * 0.55f, h * 1.05f,
+        intArrayOf(0xFF8E94A7.toInt(), 0xFF6B7181.toInt(), 0xFF666B7B.toInt(), 0xFF595E6D.toInt()),
+        floatArrayOf(0f, 0.22f, 0.6f, 1f), Shader.TileMode.CLAMP,
+    )
     n.drawRoundRect(RectF(0f, 0f, w, h), r, r, p)
     p.shader = null
-    // the camera bar: a silver rim round a dark pill with three lenses, and the flash at the right-hand end
-    p.color = 0xFFAEB3C6.toInt()
-    n.drawRoundRect(RectF(w * 0.05f, h * 0.035f, w * 0.93f, h * 0.2f), w * 0.1f, w * 0.1f, p)
-    p.color = 0xFF14161F.toInt()
-    n.drawRoundRect(RectF(w * 0.075f, h * 0.05f, w * 0.69f, h * 0.185f), w * 0.085f, w * 0.085f, p)
-    val ly = h * 0.1175f
-    for ((i, lx) in listOf(0.2f, 0.4f, 0.59f).withIndex()) {
-        p.color = 0xFF050608.toInt()
-        n.drawCircle(w * lx, ly, w * 0.075f, p)
-        p.color = if (i == 2) 0xFF2B3A8F.toInt() else 0xFF1B1E2B.toInt()
-        n.drawCircle(w * lx, ly, w * 0.04f, p)
-    }
-    val fx = w * 0.82f
-    val fy = h * 0.083f
-    if (flash > 0.01f) {
-        p.shader = RadialGradient(fx, fy, w * 0.3f, intArrayOf(withAlpha(0xFFFFE766.toInt(), (230 * flash).roundToInt()), 0), null, Shader.TileMode.CLAMP)
-        n.drawCircle(fx, fy, w * 0.3f, p)
-        p.shader = null
-    }
-    p.color = lerpInt(0xFF7F8498.toInt(), 0xFFFFF0A0.toInt(), flash)
-    n.drawCircle(fx, fy, w * 0.04f, p)
-    p.color = 0xFF7F8498.toInt()
-    n.drawCircle(fx, h * 0.152f, w * 0.04f, p)
+    p.style = android.graphics.Paint.Style.STROKE
+    p.strokeWidth = w * 0.006f
+    p.color = withAlpha(0xFFA8AEC2.toInt(), 120)
+    n.drawRoundRect(RectF(0f, 0f, w, h), r, r, p)
+    p.style = android.graphics.Paint.Style.FILL
 }
