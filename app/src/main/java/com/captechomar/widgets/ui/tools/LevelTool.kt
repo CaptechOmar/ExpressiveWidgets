@@ -1396,8 +1396,8 @@ private fun FlipAnimation() {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val d = maxWidth * 0.143f
             val sec = s
-            val shX = shake * maxWidth * 0.006f * sin(2f * PI.toFloat() * 11f * sec)
-            val shY = shake * maxWidth * 0.002f * sin(2f * PI.toFloat() * 17f * sec + 1f)
+            val shX = maxWidth * (shake * 0.006f * sin(2f * PI.toFloat() * 11f * sec))
+            val shY = maxWidth * (shake * 0.002f * sin(2f * PI.toFloat() * 17f * sec + 1f))
             val shR = shake * 9f * sin(2f * PI.toFloat() * 11f * sec + 0.8f)
             for ((idx, cfg) in listOf(Triple(R.drawable.lv_speaker_fill, 0.386f, popA), Triple(R.drawable.lv_vibrate, 0.614f, popB)).withIndex()) {
                 val (icon, yf, pop) = cfg
