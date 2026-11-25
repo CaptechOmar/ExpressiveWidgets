@@ -60,7 +60,7 @@ object ShortcutsRenderer {
                 paint,
             )
             rects.forEachIndexed { i, r ->
-                val radius = min(r.width(), r.height()) * (if (i == 0) 0.5f else 0.37f) * k
+                val radius = min(r.width(), r.height()) * (if (i == 0) 0.5f else 0.25f) * k
                 paint.color = tileColor(col, i)
                 canvas.drawRoundRect(r, radius, radius, paint)
             }
